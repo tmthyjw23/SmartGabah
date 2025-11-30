@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Tani - Hitung Biaya Per Kg</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1b5e20; /* Hijau Tua */
+            --accent: #2e7d32;
+            --bg: #f1f8e9;
+            --highlight: #e3f2fd; /* Biru Muda untuk Highlight */
+            --highlight-text: #0d47a1;
+            --danger: #c62828;
+            --warning: #f9a825;
+            --white: #ffffff;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--white); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid var(--accent); padding-bottom: 15px; }
+        h1 { color: var(--primary); margin: 0; font-size: 24px; }
+        .subtitle { color: #555; font-size: 14px; margin-top: 5px; }
+
+        .grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        @media (max-width: 768px) { .grid-main { grid-template-columns: 1fr; } }
+
+        .card { background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+        .card-header { font-weight: bold; color: var(--primary); margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; }
+        input:focus { outline: none; border-color: var(--accent); background: #f9fff9; }
+
+        /* Highlight Box untuk Total Biaya per KG */
+        .highlight-box {
+            background-color: var(--highlight);
+            border: 1px solid #90caf9;
+            color: var(--highlight-text);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .highlight-label { font-size: 0.9em; font-weight: bold; display: block; margin-bottom: 5px; }
+        .highlight-value { font-size: 1.8em; font-weight: bold; }
+
+        .btn-action { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 15px; }
+        .btn-action:hover { background: #144a18; }
+
+        #resultArea { display: none; margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .status-banner { padding: 15px; text-align: center; color: white; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 1.2em; }
+        
+        .bg-danger { background: var(--danger); animation: pulse 2s infinite; }
+        .bg-warning { background: var(--warning); color: #333; }
+        .bg-success { background: var(--accent); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌾 Kalkulator HPP & Harga Gabah</h1>
+        <div class="subtitle">Analisis Biaya Produksi Per Kg vs Harga Pemerintah & Pedagang</div>
+    </header>
+
+    <div class="grid-main">
+        
+        <div class="card">
+            <div class="card-header">1. Input Biaya & Hasil Panen</div>
+            
+            <label>Biaya Bibit (Rp)</label>
+            <input type="number" id="inBibit" placeholder="0" oninput="hitungRealTime()">
+            
+            <label>Biaya Pupuk (Rp)</label>
+            <input type="number" id="inPupuk" placeholder="0" oninput="hitungRealTime()">
+            
+            <label>Biaya Pestisida (Rp)</label>
+            <input type="number" id="inPestisida" placeholder="0" oninput="hitungRealTime()">
+            
+            <label>Biaya Tenaga Kerja (Rp)</label>
+            <input type="number" id="inTenaga" placeholder="0" oninput="hitungRealTime()">
+            
+            <div style="text-align: right; font-weight: bold; color: #555; margin-bottom: 15px;">
+                Total Biaya: <span id="dispTotalBiaya">Rp 0</span>
+            </div>
+
+            <label style="color:var(--primary); border-top: 1px solid #eee; padding-top:10px;">Total Hasil Panen Gabah (Kg)</label>
+            <input type="number" id="inPanen" placeholder="Contoh: 2000" oninput="hitungRealTime()">
+
+            <div class="highlight-box">
+                <span class="highlight-label">TOTAL BIAYA PRODUKSI PER KG</span>
+                <span class="highlight-value" id="dispBiayaPerKg">Rp 0</span>
+                <div style="font-size: 0.8em; margin-top: 5px;">(Inilah modal pokok Anda per kilo)</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">2. Bandingkan Harga</div>
+            
+            <label>Target Harga Jual (HJGKG) Petani</label>
+            <input type="number" id="inTargetPetani" placeholder="Rencana jual berapa?">
+            <small style="color: #666; display:block; margin-bottom:10px;">*Idealnya 200% dari biaya produksi per kg</small>
+
+            <label>Harga Beli Pedagang Beras</label>
+            <input type="number" id="inHargaPedagang" placeholder="Tawaran pembeli...">
+
+            <div style="background: #fff8e1; padding: 10px; border-radius: 5px; border: 1px solid #ffe0b2; font-size: 0.85em; color: #5d4037; margin-top: 10px;">
+                <strong>Acuan Sistem:</strong>
+                <ul style="padding-left: 20px; margin: 5px 0;">
+                    <li><strong>HBGKG Pemerintah:</strong> 175% x Biaya Produksi per Kg</li>
+                    <li><strong>Target Sejahtera:</strong> 200% x Biaya Produksi per Kg</li>
+                </ul>
+            </div>
+
+            <button class="btn-action" onclick="jalankanAnalisis()">ANALISIS SEKARANG</button>
+        </div>
+    </div>
+
+    <div id="resultArea">
+        <div id="statusBox" class="status-banner">STATUS</div>
+
+        <div class="grid-main">
+            <div class="card">
+                <div class="card-header">Rincian Analisis</div>
+                <table>
+                    <tr style="background-color: #e3f2fd;">
+                        <td><strong>Biaya Produksi Per Kg (HPP)</strong></td>
+                        <td class="text-right bold" id="outHPP">Rp 0</td>
+                    </tr>
+                    <tr style="color: blue;">
+                        <td>HBGKG Pemerintah (175%)</td>
+                        <td class="text-right" id="outGov">Rp 0</td>
+                    </tr>
+                    <tr style="color: green;">
+                        <td>Target Petani (200%)</td>
+                        <td class="text-right" id="outTarget">Rp 0</td>
+                    </tr>
+                    <tr><td colspan="2"><hr></td></tr>
+                    <tr style="font-size: 1.1em;">
+                        <td><strong>Tawaran Pedagang</strong></td>
+                        <td class="text-right bold" id="outPedagang">Rp 0</td>
+                    </tr>
+                </table>
+                <p id="saranText" style="margin-top: 15px; font-style: italic; line-height: 1.5; color: #444;">...</p>
+            </div>
+
+            <div class="card">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /*
+     * DATABASE ARRAY
+     * Index [0-3]: Komponen Biaya (Bibit, Pupuk, Pestisida, Tenaga)
+     * Index [4]: Total Biaya (Rupiah)
+     * Index [5]: Total Panen (Kg)
+     * Index [6]: BIAYA PRODUKSI PER KG (HPP)
+     * Index [7]: Harga Pemerintah (175%)
+     * Index [8]: Target Petani (200%)
+     * Index [9]: Tawaran Pedagang
+     */
+    let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let chartInstance = null;
+
+    const formatRp = (val) => "Rp " + new Intl.NumberFormat('id-ID').format(val);
+
+    // FUNGSI 1: Hitung Real-time saat mengetik
+    function hitungRealTime() {
+        // Ambil input biaya
+        let b1 = parseFloat(document.getElementById('inBibit').value) || 0;
+        let b2 = parseFloat(document.getElementById('inPupuk').value) || 0;
+        let b3 = parseFloat(document.getElementById('inPestisida').value) || 0;
+        let b4 = parseFloat(document.getElementById('inTenaga').value) || 0;
+        
+        // Simpan ke Array & Hitung Total
+        dbTani[0]=b1; dbTani[1]=b2; dbTani[2]=b3; dbTani[3]=b4;
+        dbTani[4] = b1 + b2 + b3 + b4; // Total Biaya
+
+        // Ambil input Panen
+        dbTani[5] = parseFloat(document.getElementById('inPanen').value) || 0;
+
+        // Update Tampilan Total Biaya
+        document.getElementById('dispTotalBiaya').innerText = formatRp(dbTani[4]);
+
+        // HITUNG BIAYA PER KG (HPP)
+        if (dbTani[5] > 0) {
+            dbTani[6] = dbTani[4] / dbTani[5]; // Rumus: Total Biaya / Total Kg
+            document.getElementById('dispBiayaPerKg').innerText = formatRp(dbTani[6]);
+        } else {
+            dbTani[6] = 0;
+            document.getElementById('dispBiayaPerKg').innerText = "Rp 0";
+        }
+    }
+
+    // FUNGSI 2: Analisis Lengkap (Tombol ditekan)
+    function jalankanAnalisis() {
+        // Pastikan kalkulasi dasar sudah jalan
+        hitungRealTime(); 
+        
+        // Ambil input harga pedagang
+        dbTani[9] = parseFloat(document.getElementById('inHargaPedagang').value) || 0;
+
+        // Validasi
+        if (dbTani[6] === 0) {
+            alert("Mohon isi Total Biaya dan Hasil Panen dengan benar agar Biaya Per Kg bisa dihitung.");
+            return;
+        }
+
+        // Kalkulasi Standar & Target
+        dbTani[7] = dbTani[6] * 1.75; // Pemerintah 175%
+        dbTani[8] = dbTani[6] * 2.00; // Petani 200%
+
+        // Render Angka ke Tabel
+        document.getElementById('outHPP').innerText = formatRp(dbTani[6]);
+        document.getElementById('outGov').innerText = formatRp(dbTani[7]);
+        document.getElementById('outTarget').innerText = formatRp(dbTani[8]);
+        document.getElementById('outPedagang').innerText = formatRp(dbTani[9]);
+
+        // Logika Status & Saran
+        const statusBox = document.getElementById('statusBox');
+        const saranText = document.getElementById('saranText');
+        statusBox.className = 'status-banner'; // Reset
+
+        if (dbTani[9] < dbTani[6]) {
+            // Case: Rugi
+            statusBox.innerText = "⛔ BAHAYA: DI BAWAH BIAYA PRODUKSI";
+            statusBox.classList.add('bg-danger');
+            saranText.innerHTML = `Harga pedagang (${formatRp(dbTani[9])}) lebih rendah dari <b>Biaya Produksi Per Kg (${formatRp(dbTani[6])})</b>. Anda rugi bandar. Jangan dijual!`;
+        
+        } else if (dbTani[9] < dbTani[7]) {
+            // Case: Untung dikit, di bawah pemerintah
+            statusBox.innerText = "⚠️ PERINGATAN: DI BAWAH HBGKG PEMERINTAH";
+            statusBox.classList.add('bg-warning');
+            saranText.innerHTML = `Harga ini di atas modal, tapi masih di bawah standar Pemerintah (${formatRp(dbTani[7])}). Coba tawar naik sedikit lagi.`;
+        
+        } else {
+            // Case: Untung
+            statusBox.classList.add('bg-success');
+            if (dbTani[9] >= dbTani[8]) {
+                statusBox.innerText = "✅ SANGAT BAGUS (DI ATAS 200%)";
+                saranText.innerHTML = "Tawaran sangat menguntungkan di atas target kesejahteraan. Segera lepas barang.";
+            } else {
+                statusBox.innerText = "✅ AMAN (HARGA WAJAR)";
+                saranText.innerHTML = "Harga sudah aman di atas standar pemerintah. Silakan dijual.";
+            }
+        }
+
+        document.getElementById('resultArea').style.display = 'block';
+        updateChart();
+    }
+
+    // FUNGSI 3: Gambar Grafik
+    function updateChart() {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        // Warna Pedagang Dinamis
+        let colorPedagang = '#fbc02d'; // Default Kuning
+        if (dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; // Merah
+        else if (dbTani[9] >= dbTani[8]) colorPedagang = '#1b5e20'; // Hijau
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Biaya Per Kg', 'Pemerintah (175%)', 'Target (200%)', 'Tawaran Pedagang'],
+                datasets: [{
+                    label: 'Harga (Rp)',
+                    data: [dbTani[6], dbTani[7], dbTani[8], dbTani[9]],
+                    backgroundColor: ['#b0bec5', '#1e88e5', '#43a047', colorPedagang],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
