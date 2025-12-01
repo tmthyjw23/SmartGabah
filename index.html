@@ -117,27 +117,27 @@
             </div>
         </div>
 
-        <div class="card">
+<div class="card">
             <div class="card-header">2. Target & Harga Pasar</div>
             
             <label>Target Keuntungan Petani (%)</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px;">
-                <input type="number" id="inTargetPersen" placeholder="Cth: 25" oninput="hitungTargetRupiah()" style="margin-bottom:0;">
-                <div id="dispTargetRupiah" style="font-weight: bold; color: var(--primary); background: #e8f5e9; padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #c8e6c9;">Rp 0</div>
+            <div class="input-row">
+                <input type="number" id="inTargetPersen" placeholder="Cth: 20" oninput="hitungRealTime()" style="margin-bottom:0;">
+                <div id="dispTargetRupiah" class="display-box">Rp 0</div>
             </div>
-            <small style="color: #666; display:block; margin-bottom:15px; margin-top: -5px;">*Input 25 = HPP + 25% Profit</small>
             
+            <label>Standar Harga Pemerintah (%)</label>
+            <div class="input-row">
+                <input type="number" id="inGovPersen" placeholder="Cth: 30" oninput="hitungRealTime()" style="margin-bottom:0;">
+                <div id="dispGovRupiah" class="display-box-blue">Rp 0</div>
+            </div>
+            <small style="color: #666; display:block; margin-bottom:15px; margin-top: 5px;">*Validasi: Pemerintah harus lebih tinggi dari Petani.</small>
+
             <label>Harga Beli Pedagang Beras</label>
             <input type="number" id="inHargaPedagang" placeholder="Tawaran pembeli...">
 
             <label style="color: #0277bd;">Harga Pasar (Konsumen)</label>
             <input type="number" id="inHargaPasar" placeholder="Harga beras di pasar...">
-
-            <div style="background: #fff8e1; padding: 10px; border-radius: 5px; border: 1px solid #ffe0b2; font-size: 0.85em; color: #5d4037; margin-top: 10px;">
-                <small id="govRandomNote" style="color: #d84315; font-weight: bold;">
-                    *Klik "ANALISIS" untuk acak Harga Pemerintah (175%-200%).
-                </small>
-            </div>
 
             <button class="btn-action" onclick="jalankanAnalisis()">ANALISIS SEKARANG</button>
         </div>
@@ -167,13 +167,13 @@
      * Index [4]: Total Biaya (Rupiah)
      * Index [5]: Total Panen (Kg)
      * Index [6]: HPP Per Kg
-     * Index [7]: Harga Pemerintah (RANDOM 175%-200%)
-     * Index [8]: Target Harga Rupiah Petani (HPP + Profit %)
+     * Index [7]: Harga Pemerintah (Hasil Hitung Input Gov%)
+     * Index [8]: Target Petani (Hasil Hitung Input Petani%)
      * Index [9]: Tawaran Pedagang
      * Index [10]: Harga Pasar
      * Index [11]: Status Panen (1=Berhasil, 0=Puso)
-     * Index [12]: Persentase Random yang didapat
-     * Index [13]: Input Persentase Target Petani
+     * Index [12]: Input Persentase Pemerintah (Misal 30)
+     * Index [13]: Input Persentase Target Petani (Misal 20)
      */
     let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
     let chartInstance = null;
@@ -196,29 +196,16 @@
         }
     }
 
-    // Hitung Target Rupiah dari Persen (HPP + (HPP * %))
-    function hitungTargetRupiah() {
-        let persen = parseFloat(document.getElementById('inTargetPersen').value) || 0;
-        let hpp = dbTani[6]; 
-        
-        if (hpp > 0) {
-            let margin = hpp * (persen / 100);
-            let targetRp = hpp + margin; 
-            document.getElementById('dispTargetRupiah').innerText = formatRp(targetRp);
-        } else {
-            document.getElementById('dispTargetRupiah').innerText = "Rp 0";
-        }
-    }
-
     function hitungRealTime() {
+        // 1. Hitung Biaya
         let b1 = parseFloat(document.getElementById('inBibit').value) || 0;
         let b2 = parseFloat(document.getElementById('inPupuk').value) || 0;
         let b3 = parseFloat(document.getElementById('inPestisida').value) || 0;
         let b4 = parseFloat(document.getElementById('inTenaga').value) || 0;
         
-        dbTani[0]=b1; dbTani[1]=b2; dbTani[2]=b3; dbTani[3]=b4;
-        dbTani[4] = b1 + b2 + b3 + b4; 
-
+        dbTani[4] = b1 + b2 + b3 + b4; // Total Biaya
+        
+        // 2. Cek Puso
         let statusStr = document.getElementById('statusPanen').value;
         dbTani[11] = (statusStr === 'berhasil') ? 1 : 0;
 
@@ -228,6 +215,7 @@
             dbTani[5] = 0; 
         }
 
+        // 3. Display Basic
         document.getElementById('dispTotalBiaya').innerText = formatRp(dbTani[4]);
 
         if (dbTani[5] > 0) {
@@ -237,7 +225,24 @@
             dbTani[6] = 0;
             document.getElementById('dispBiayaPerKg').innerText = "Rp 0 (Puso)";
         }
-        hitungTargetRupiah();
+
+        // 4. Hitung Realtime Rupiah Target Petani & Pemerintah
+        let hpp = dbTani[6];
+        let persenPetani = parseFloat(document.getElementById('inTargetPersen').value) || 0;
+        let persenGov = parseFloat(document.getElementById('inGovPersen').value) || 0;
+
+        if (hpp > 0) {
+            // Target Petani = HPP + (HPP * %)
+            let targetRp = hpp + (hpp * (persenPetani / 100));
+            document.getElementById('dispTargetRupiah').innerText = formatRp(targetRp);
+
+            // Harga Pemerintah = HPP + (HPP * %)
+            let govRp = hpp + (hpp * (persenGov / 100));
+            document.getElementById('dispGovRupiah').innerText = formatRp(govRp);
+        } else {
+            document.getElementById('dispTargetRupiah').innerText = "Rp 0";
+            document.getElementById('dispGovRupiah').innerText = "Rp 0";
+        }
     }
 
     function jalankanAnalisis() {
@@ -245,68 +250,76 @@
         
         dbTani[9] = parseFloat(document.getElementById('inHargaPedagang').value) || 0;
         dbTani[10] = parseFloat(document.getElementById('inHargaPasar').value) || 0;
+        dbTani[12] = parseFloat(document.getElementById('inGovPersen').value) || 0;
         dbTani[13] = parseFloat(document.getElementById('inTargetPersen').value) || 0;
+
+        // Hitung nilai akhir untuk array
+        let marginPetani = dbTani[6] * (dbTani[13] / 100);
+        dbTani[8] = dbTani[6] + marginPetani; // Target Petani
+
+        let marginGov = dbTani[6] * (dbTani[12] / 100);
+        dbTani[7] = dbTani[6] + marginGov; // Harga Gov
 
         const statusBox = document.getElementById('statusBox');
         const saranText = document.getElementById('saranText');
         const tabel = document.getElementById('tabelRincian');
         
         statusBox.className = 'status-banner'; 
+        document.getElementById('resultArea').style.display = 'block';
 
-        // 1. SKENARIO PUSO (GAGAL PANEN)
-        // Jika gagal panen, langsung rekomendasi Operasi Pasar
+        // --- VALIDASI: GOV HARUS > PETANI ---
+        if (dbTani[11] === 1 && dbTani[6] > 0) { // Hanya validasi jika panen berhasil
+             if (dbTani[7] <= dbTani[8]) {
+                statusBox.innerHTML = "⛔ VALIDASI ERROR";
+                statusBox.classList.add('bg-neutral');
+                saranText.innerHTML = `
+                    Input Tidak Valid. <strong>Harga Pemerintah (${formatRp(dbTani[7])})</strong> harus disetting lebih tinggi dari <strong>Target Petani (${formatRp(dbTani[8])})</strong>.
+                    <br>Silakan naikkan Persen Pemerintah atau turunkan Persen Target Petani.
+                `;
+                tabel.innerHTML = ""; // Kosongkan tabel
+                // Clear chart
+                if (chartInstance) chartInstance.destroy();
+                return; // Stop Proses
+            }
+        }
+
+        // SKENARIO 1: PUSO
         if (dbTani[11] === 0) {
             statusBox.innerHTML = "⛔ STATUS: GAGAL PANEN (PUSO)";
             statusBox.classList.add('bg-puso');
-            saranText.innerHTML = `
-                <div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br><br>
-                Petani mengalami kerugian total biaya produksi: <b>${formatRp(dbTani[4])}</b>.<br>
-                Stok habis, Pemerintah wajib intervensi.
-            `;
+            saranText.innerHTML = `<div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br>Kerugian total: <b>${formatRp(dbTani[4])}</b>. Stok Pangan Kritis.`;
             tabel.innerHTML = `<tr><td>Total Kerugian</td><td class="text-right bold" style="color:red;">${formatRp(dbTani[4])}</td></tr>`;
-            document.getElementById('resultArea').style.display = 'block';
             renderChartPuso();
             return;
         }
 
-        // 2. VALIDASI DATA
+        // SKENARIO 2: NORMAL
         if (dbTani[6] === 0) {
             alert("Mohon isi Total Biaya dan Hasil Panen dengan benar.");
             return;
         }
 
-        // 3. GENERATE HARGA GOV (175-200%)
-        let randomFactor = 1.75 + (Math.random() * 0.25); 
-        dbTani[7] = dbTani[6] * randomFactor; 
-        dbTani[12] = (randomFactor * 100).toFixed(1); 
-        
-        document.getElementById('govRandomNote').innerText = `*Persentase Pemerintah Terpilih: ${dbTani[12]}%`;
-
-        // 4. HITUNG TARGET PETANI (HPP + %)
-        let marginPetani = dbTani[6] * (dbTani[13] / 100);
-        dbTani[8] = dbTani[6] + marginPetani;
-
-        // Render Tabel
+        // Render Tabel Normal
         tabel.innerHTML = `
             <tr style="background-color: #e3f2fd;">
                 <td><strong>Biaya Produksi Per Kg (HPP)</strong></td>
                 <td class="text-right bold">${formatRp(dbTani[6])}</td>
             </tr>
-            <tr style="color: blue;">
-                <td>HBGKG Pemerintah (<strong>${dbTani[12]}%</strong>)</td>
-                <td class="text-right">${formatRp(dbTani[7])}</td>
-            </tr>
             <tr style="color: green;">
                 <td>Target Petani (+<strong>${dbTani[13]}%</strong>)</td>
-                <td class="text-right bold">${formatRp(dbTani[8])}</td>
+                <td class="text-right">${formatRp(dbTani[8])}</td>
+            </tr>
+            <tr style="color: blue;">
+                <td>Standar Pemerintah (+<strong>${dbTani[12]}%</strong>)</td>
+                <td class="text-right bold">${formatRp(dbTani[7])}</td>
             </tr>
             <tr style="font-size: 1.1em;">
-                <td><strong>Harga Beras Pedagang di pasar</strong></td>
+                <td><strong>Harga Jual Beras Pedagang</strong></td>
                 <td class="text-right bold">${formatRp(dbTani[9])}</td>
             </tr>
         `;
 
-        // --- LOGIKA KEPUTUSAN UTAMA ---
+        // --- LOGIKA KEPUTUSAN ---
 
         // 1. Cek Input Pedagang
         if (dbTani[9] === 0) {
@@ -315,44 +328,37 @@
             saranText.innerHTML = "Silakan masukkan harga tawaran pedagang untuk analisis.";
         }
         
-        // 2. TRIGGER BARU (PRIORITAS): HARGA PEDAGANG > GOV DAN PETANI > GOV
-        // "segera di lakukan operasi pasar saat Harga pedagang dan Harga jual petani lebih besar dari Harga pemerintah"
-        else if (dbTani[9] > dbTani[7] && dbTani[8] > dbTani[7]) {
+        // 2. TRIGGER OPERASI PASAR (INFLASI)
+        // Syarat: Harga Pedagang > Harga Pemerintah
+        // (Note: Karena ada validasi Petani < Gov, maka jika Pedagang > Gov, otomatis Pedagang > Petani juga)
+        else if (dbTani[9] > dbTani[7]) {
             statusBox.innerText = "⚠️ HARGA MELAMBUNG TINGGI";
             statusBox.classList.add('bg-ops');
             saranText.innerHTML = `
                 <div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br>
-                Harga Pedagang (${formatRp(dbTani[9])}) dan Target Petani (${formatRp(dbTani[8])}) melampaui Harga Pemerintah (${formatRp(dbTani[7])}).<br>
-                Indikasi inflasi tinggi, pemerintah harus intervensi.
+                Harga Pedagang (${formatRp(dbTani[9])}) sudah melampaui batas atas Standar Pemerintah (${formatRp(dbTani[7])}).<br>
+                Ini indikasi inflasi pasar yang berbahaya.
             `;
         }
 
-        // 3. TRIGGER: BAWAH HARGA PRODUKSI (RUGI)
+        // 3. TRIGGER RUGI (BAWAH HPP)
         else if (dbTani[9] < dbTani[6]) {
             statusBox.innerText = "⛔ BAHAYA: DI BAWAH HARGA PRODUKSI";
             statusBox.classList.add('bg-danger');
             saranText.innerHTML = `
                 <div class='op-badge'>JANGAN DIJUAL</div><br>
-                Harga tawaran pedagang (${formatRp(dbTani[9])}) tidak menutup modal produksi (${formatRp(dbTani[6])}).<br>
-                <strong>Saran:</strong> Tahan gabah Anda atau jual ke Offtaker Pemerintah/Koperasi.
+                Harga pedagang (${formatRp(dbTani[9])}) tidak menutup modal produksi (${formatRp(dbTani[6])}).<br>
+                Pemerintah wajib intervensi sebagai Offtaker.
             `;
         }
 
-        // 4. TRIGGER: WARNING (Dibawah Standar Gov)
-        else if (dbTani[9] < dbTani[7]) {
-            statusBox.innerText = "⚠️ PERINGATAN: DI BAWAH STANDAR";
-            statusBox.classList.add('bg-warning');
-            saranText.innerHTML = `Harga untung tipis, tapi masih di bawah standar Pemerintah (${dbTani[12]}%).`;
-        }
-
-        // 5. AMAN
+        // 4. TRIGGER AMAN
         else {
             statusBox.innerText = "✅ KONDISI PASAR STABIL";
             statusBox.classList.add('bg-success');
-            saranText.innerHTML = "Harga wajar. Transaksi aman.";
+            saranText.innerHTML = "Harga wajar. Pedagang membeli di range yang aman (Di atas target petani, tapi tidak melebihi batas pemerintah).";
         }
 
-        document.getElementById('resultArea').style.display = 'block';
         updateChart();
     }
 
@@ -379,20 +385,20 @@
         if (chartInstance) chartInstance.destroy();
 
         let colorPedagang = '#fbc02d';
-        if (dbTani[9] > 0 && dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; // Merah
-        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; // Oranye
+        if (dbTani[9] > 0 && dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; // Rugi
+        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; // Oranye Inflasi
 
-        let labelGov = 'Gov (' + dbTani[12] + '%)';
-        let labelTarget = 'Target (+' + dbTani[13] + '%)';
+        let labelGov = 'Gov (+' + dbTani[12] + '%)';
+        let labelTarget = 'Petani (+' + dbTani[13] + '%)';
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['HPP', labelGov, labelTarget, 'Pedagang'],
+                labels: ['HPP', labelTarget, labelGov, 'Pedagang'],
                 datasets: [{
                     label: 'Harga (Rp/Kg)',
-                    data: [dbTani[6], dbTani[7], dbTani[8], dbTani[9]],
-                    backgroundColor: ['#b0bec5', '#1e88e5', '#43a047', colorPedagang],
+                    data: [dbTani[6], dbTani[8], dbTani[7], dbTani[9]],
+                    backgroundColor: ['#b0bec5', '#43a047', '#1e88e5', colorPedagang],
                     borderWidth: 1
                 }]
             },
