@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Tani - Harga Pemerintah Dinamis</title>
+    <title>Sistem Tani - Fix Trigger Operasi Pasar</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: #1b5e20; /* Hijau Tua */
+            --primary: #1b5e20;
             --accent: #2e7d32;
             --bg: #f1f8e9;
             --highlight: #e3f2fd;
             --highlight-text: #0d47a1;
             --danger: #c62828;
             --warning: #f9a825;
-            --info: #0288d1;
             --white: #ffffff;
+            --neutral: #757575;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
@@ -33,9 +33,8 @@
 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; font-size: 15px; }
-        input:focus, select:focus { outline: none; border-color: var(--accent); background: #f9fff9; }
+        input:focus { outline: none; border-color: var(--accent); background: #f9fff9; }
 
-        /* Highlight Box untuk Total Biaya per KG */
         .highlight-box {
             background-color: var(--highlight);
             border: 1px solid #90caf9;
@@ -54,12 +53,12 @@
         #resultArea { display: none; margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
         .status-banner { padding: 15px; text-align: center; color: white; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 1.2em; }
         
-        /* WARNA STATUS */
         .bg-danger { background: var(--danger); animation: pulse 2s infinite; }
         .bg-warning { background: var(--warning); color: #333; }
         .bg-success { background: var(--accent); }
         .bg-puso { background: #b71c1c; border: 2px solid #ff5252; } 
         .bg-ops { background: #ff6f00; color: white; } 
+        .bg-neutral { background: var(--neutral); }
 
         .op-badge { display: inline-block; background: #000; color: #fff; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-top: 10px; font-size: 0.8em; }
 
@@ -81,8 +80,8 @@
 
 <div class="container">
     <header>
-        <h1>🌾 Perhitungan HPP & Harga Gabah Kering Giling</h1>
-        <div class="subtitle">Analisis Biaya Produksi Per Kg vs Harga Pemerintah & Pedagang</div>
+        <h1>🌾 Perhitungan HPP & Operasi Pasar</h1>
+        <div class="subtitle">Analisis Biaya, Target Profit (%), dan Stabilitas Harga</div>
     </header>
 
     <div class="status-selector">
@@ -91,25 +90,17 @@
             <option value="berhasil">✅ PANEN BERHASIL (NORMAL)</option>
             <option value="gagal">⛔ GAGAL PANEN (PUSO)</option>
         </select>
-        <small id="pusoNote" style="display:none; color: var(--danger); font-weight:bold;">*Sistem akan menghitung total kerugian & rekomendasi Operasi Pasar.</small>
+        <small id="pusoNote" style="display:none; color: var(--danger); font-weight:bold;">*Gagal panen (Puso) otomatis memicu rekomendasi Operasi Pasar.</small>
     </div>
 
     <div class="grid-main">
-        
         <div class="card">
             <div class="card-header">1. Input Biaya & Hasil Panen <span style="text-transform: none;">/Ha</span></div>
             
-            <label>Biaya Bibit (Rp)</label>
-            <input type="number" id="inBibit" placeholder="0" oninput="hitungRealTime()">
-            
-            <label>Biaya Pupuk (Rp)</label>
-            <input type="number" id="inPupuk" placeholder="0" oninput="hitungRealTime()">
-            
-            <label>Biaya Pestisida (Rp)</label>
-            <input type="number" id="inPestisida" placeholder="0" oninput="hitungRealTime()">
-            
-            <label>Biaya Tenaga Kerja (Rp)</label>
-            <input type="number" id="inTenaga" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Bibit (Rp)</label> <input type="number" id="inBibit" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Pupuk (Rp)</label> <input type="number" id="inPupuk" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Pestisida (Rp)</label> <input type="number" id="inPestisida" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Tenaga Kerja (Rp)</label> <input type="number" id="inTenaga" placeholder="0" oninput="hitungRealTime()">
             
             <div style="text-align: right; font-weight: bold; color: #555; margin-bottom: 15px;">
                 Total Biaya: <span id="dispTotalBiaya">Rp 0</span>
@@ -120,22 +111,21 @@
                 <input type="number" id="inPanen" placeholder="Contoh: 2000" oninput="hitungRealTime()">
 
                 <div class="highlight-box">
-                    <span class="highlight-label">TOTAL BIAYA PRODUKSI PER KG</span>
+                    <span class="highlight-label">TOTAL BIAYA PRODUKSI PER KG (HPP)</span>
                     <span class="highlight-value" id="dispBiayaPerKg">Rp 0</span>
-                    <div style="font-size: 0.8em; margin-top: 5px;">(Inilah modal pokok Anda per kilo)</div>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">2. Bandingkan Harga & Pasar</div>
+            <div class="card-header">2. Target & Harga Pasar</div>
             
-            <label>Target Jual Petani (% dari HPP)</label>
+            <label>Target Keuntungan Petani (%)</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px;">
-                <input type="number" id="inTargetPersen" placeholder="Cth: 200" oninput="hitungTargetRupiah()" style="margin-bottom:0;">
+                <input type="number" id="inTargetPersen" placeholder="Cth: 25" oninput="hitungTargetRupiah()" style="margin-bottom:0;">
                 <div id="dispTargetRupiah" style="font-weight: bold; color: var(--primary); background: #e8f5e9; padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #c8e6c9;">Rp 0</div>
             </div>
-            <small style="color: #666; display:block; margin-bottom:15px; margin-top: -5px;">*Masukkan % (Misal 200% = 2x Modal)</small>
+            <small style="color: #666; display:block; margin-bottom:15px; margin-top: -5px;">*Input 25 = HPP + 25% Profit</small>
             
             <label>Harga Beli Pedagang Beras</label>
             <input type="number" id="inHargaPedagang" placeholder="Tawaran pembeli...">
@@ -144,14 +134,9 @@
             <input type="number" id="inHargaPasar" placeholder="Harga beras di pasar...">
 
             <div style="background: #fff8e1; padding: 10px; border-radius: 5px; border: 1px solid #ffe0b2; font-size: 0.85em; color: #5d4037; margin-top: 10px;">
-                <strong>Trigger Operasi Pasar:</strong>
-                <ul style="padding-left: 20px; margin: 5px 0;">
-                    <li>Status Panen Gagal (Puso)</li>
-                    <li>Harga Pedagang & Harga Petani > Harga Pemerintah</li>
-                    <li>HPP Mines (Petani Rugi)</li>
-                </ul>
-                <hr>
-                <small style="color: #d84315;">*Harga Pemerintah akan diacak (Random) antara 175% - 200% setiap kali Analisis.</small>
+                <small id="govRandomNote" style="color: #d84315; font-weight: bold;">
+                    *Klik "ANALISIS" untuk acak Harga Pemerintah (175%-200%).
+                </small>
             </div>
 
             <button class="btn-action" onclick="jalankanAnalisis()">ANALISIS SEKARANG</button>
@@ -164,8 +149,7 @@
         <div class="grid-main">
             <div class="card">
                 <div class="card-header">Rincian Analisis</div>
-                <table id="tabelRincian">
-                    </table>
+                <table id="tabelRincian"></table>
                 <p id="saranText" style="margin-top: 15px; font-style: italic; line-height: 1.5; color: #444;">...</p>
             </div>
 
@@ -184,12 +168,12 @@
      * Index [5]: Total Panen (Kg)
      * Index [6]: HPP Per Kg
      * Index [7]: Harga Pemerintah (RANDOM 175%-200%)
-     * Index [8]: Target Harga Rupiah Petani (Hasil hitung %)
+     * Index [8]: Target Harga Rupiah Petani (HPP + Profit %)
      * Index [9]: Tawaran Pedagang
      * Index [10]: Harga Pasar
      * Index [11]: Status Panen (1=Berhasil, 0=Puso)
-     * Index [12]: Persentase Random yang didapat (Untuk Display)
-     * Index [13]: Input Persentase Target Petani (Misal 200)
+     * Index [12]: Persentase Random yang didapat
+     * Index [13]: Input Persentase Target Petani
      */
     let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
     let chartInstance = null;
@@ -212,13 +196,14 @@
         }
     }
 
-    // Fungsi Baru: Hitung Target Rupiah dari % secara Realtime
+    // Hitung Target Rupiah dari Persen (HPP + (HPP * %))
     function hitungTargetRupiah() {
         let persen = parseFloat(document.getElementById('inTargetPersen').value) || 0;
-        let hpp = dbTani[6]; // Ambil HPP saat ini
+        let hpp = dbTani[6]; 
         
-        if (hpp > 0 && persen > 0) {
-            let targetRp = hpp * (persen / 100);
+        if (hpp > 0) {
+            let margin = hpp * (persen / 100);
+            let targetRp = hpp + margin; 
             document.getElementById('dispTargetRupiah').innerText = formatRp(targetRp);
         } else {
             document.getElementById('dispTargetRupiah').innerText = "Rp 0";
@@ -252,8 +237,6 @@
             dbTani[6] = 0;
             document.getElementById('dispBiayaPerKg').innerText = "Rp 0 (Puso)";
         }
-
-        // Panggil fungsi update target rupiah kalau HPP berubah
         hitungTargetRupiah();
     }
 
@@ -262,8 +245,6 @@
         
         dbTani[9] = parseFloat(document.getElementById('inHargaPedagang').value) || 0;
         dbTani[10] = parseFloat(document.getElementById('inHargaPasar').value) || 0;
-        
-        // Ambil input Persen Target Petani
         dbTani[13] = parseFloat(document.getElementById('inTargetPersen').value) || 0;
 
         const statusBox = document.getElementById('statusBox');
@@ -272,39 +253,38 @@
         
         statusBox.className = 'status-banner'; 
 
-        // --- SKENARIO 1: GAGAL PANEN (PUSO) ---
+        // 1. SKENARIO PUSO (GAGAL PANEN)
+        // Jika gagal panen, langsung rekomendasi Operasi Pasar
         if (dbTani[11] === 0) {
             statusBox.innerHTML = "⛔ STATUS: GAGAL PANEN (PUSO)";
             statusBox.classList.add('bg-puso');
-            
             saranText.innerHTML = `
-                <div class='op-badge'>PERLU OPERASI PASAR & BANTUAN</div><br><br>
-                Tidak ada panen. Petani mengalami kerugian total biaya produksi sebesar <b>${formatRp(dbTani[4])}</b>.<br>
-                Pemerintah wajib melakukan Operasi Pasar.
+                <div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br><br>
+                Petani mengalami kerugian total biaya produksi: <b>${formatRp(dbTani[4])}</b>.<br>
+                Stok habis, Pemerintah wajib intervensi.
             `;
-            tabel.innerHTML = `
-                <tr><td>Total Kerugian</td><td class="text-right bold" style="color:red;">${formatRp(dbTani[4])}</td></tr>
-                <tr><td>Harga Pasar Saat Ini</td><td class="text-right">${formatRp(dbTani[10])}</td></tr>
-            `;
+            tabel.innerHTML = `<tr><td>Total Kerugian</td><td class="text-right bold" style="color:red;">${formatRp(dbTani[4])}</td></tr>`;
             document.getElementById('resultArea').style.display = 'block';
             renderChartPuso();
             return;
         }
 
-        // --- SKENARIO 2: PANEN BERHASIL (NORMAL) ---
+        // 2. VALIDASI DATA
         if (dbTani[6] === 0) {
             alert("Mohon isi Total Biaya dan Hasil Panen dengan benar.");
             return;
         }
 
-        // --- LOGIKA HARGA PEMERINTAH RANDOM (175% - 200%) ---
+        // 3. GENERATE HARGA GOV (175-200%)
         let randomFactor = 1.75 + (Math.random() * 0.25); 
         dbTani[7] = dbTani[6] * randomFactor; 
         dbTani[12] = (randomFactor * 100).toFixed(1); 
+        
+        document.getElementById('govRandomNote').innerText = `*Persentase Pemerintah Terpilih: ${dbTani[12]}%`;
 
-        // --- HITUNG TARGET PETANI BERDASARKAN INPUT % BARU ---
-        // dbTani[8] (Target Rupiah) = HPP * (Input Persen / 100)
-        dbTani[8] = dbTani[6] * (dbTani[13] / 100);
+        // 4. HITUNG TARGET PETANI (HPP + %)
+        let marginPetani = dbTani[6] * (dbTani[13] / 100);
+        dbTani[8] = dbTani[6] + marginPetani;
 
         // Render Tabel
         tabel.innerHTML = `
@@ -317,47 +297,59 @@
                 <td class="text-right">${formatRp(dbTani[7])}</td>
             </tr>
             <tr style="color: green;">
-                <td>Target Petani (<strong>${dbTani[13]}%</strong>)</td>
+                <td>Target Petani (+<strong>${dbTani[13]}%</strong>)</td>
                 <td class="text-right bold">${formatRp(dbTani[8])}</td>
             </tr>
             <tr style="font-size: 1.1em;">
-                <td><strong>Harga Jual Beras Pedagang di Pasar</strong></td>
+                <td><strong>Tawaran Pedagang</strong></td>
                 <td class="text-right bold">${formatRp(dbTani[9])}</td>
-            </tr>
-            <tr>
-                <td>Harga Pasar Konsumen</td>
-                <td class="text-right">${formatRp(dbTani[10])}</td>
             </tr>
         `;
 
-        // --- LOGIKA KEPUTUSAN BARU (OPERASI PASAR) ---
-        // Syarat Operasi Pasar: Harga Pedagang > Gov AND Harga Petani > Gov
-        if (dbTani[9] > dbTani[7] && dbTani[8] > dbTani[7]) {
+        // --- LOGIKA KEPUTUSAN UTAMA ---
+
+        // 1. Cek Input Pedagang
+        if (dbTani[9] === 0) {
+            statusBox.innerText = "⏳ MENUNGGU INPUT HARGA PEDAGANG";
+            statusBox.classList.add('bg-neutral');
+            saranText.innerHTML = "Silakan masukkan harga tawaran pedagang untuk analisis.";
+        }
+        
+        // 2. TRIGGER BARU (PRIORITAS): HARGA PEDAGANG > GOV DAN PETANI > GOV
+        // "segera di lakukan operasi pasar saat Harga pedagang dan Harga jual petani lebih besar dari Harga pemerintah"
+        else if (dbTani[9] > dbTani[7] && dbTani[8] > dbTani[7]) {
             statusBox.innerText = "⚠️ HARGA MELAMBUNG TINGGI";
             statusBox.classList.add('bg-ops');
             saranText.innerHTML = `
-                <div class='op-badge'>WAJIB OPERASI PASAR</div><br>
-                Harga pedagang (${formatRp(dbTani[9])}) DAN Target Jual Petani (${formatRp(dbTani[8])}) keduanya lebih tinggi dari standar Pemerintah saat ini (${dbTani[12]}% / ${formatRp(dbTani[7])}).<br>
-                Kondisi ini memicu inflasi tinggi. Segera lakukan stabilisasi.
+                <div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br>
+                Harga Pedagang (${formatRp(dbTani[9])}) dan Target Petani (${formatRp(dbTani[8])}) melampaui Harga Pemerintah (${formatRp(dbTani[7])}).<br>
+                Indikasi inflasi tinggi, pemerintah harus intervensi.
             `;
-        } 
+        }
+
+        // 3. TRIGGER: BAWAH HARGA PRODUKSI (RUGI)
         else if (dbTani[9] < dbTani[6]) {
-            statusBox.innerText = "⛔ BAHAYA: PETANI RUGI (HPP MINES)";
+            statusBox.innerText = "⛔ BAHAYA: DI BAWAH HARGA PRODUKSI";
             statusBox.classList.add('bg-danger');
             saranText.innerHTML = `
-                <div class='op-badge'>OPERASI PASAR (SERAP GABAH)</div><br>
-                Harga pedagang di bawah modal produksi. Pemerintah wajib membeli gabah petani (Offtaker).
+                <div class='op-badge'>JANGAN DIJUAL</div><br>
+                Harga tawaran pedagang (${formatRp(dbTani[9])}) tidak menutup modal produksi (${formatRp(dbTani[6])}).<br>
+                <strong>Saran:</strong> Tahan gabah Anda atau jual ke Offtaker Pemerintah/Koperasi.
             `;
-        } 
+        }
+
+        // 4. TRIGGER: WARNING (Dibawah Standar Gov)
         else if (dbTani[9] < dbTani[7]) {
             statusBox.innerText = "⚠️ PERINGATAN: DI BAWAH STANDAR";
             statusBox.classList.add('bg-warning');
-            saranText.innerHTML = `Harga di atas modal, tapi di bawah standar Pemerintah hari ini (${dbTani[12]}%). Negosiasi ulang.`;
-        } 
+            saranText.innerHTML = `Harga untung tipis, tapi masih di bawah standar Pemerintah (${dbTani[12]}%).`;
+        }
+
+        // 5. AMAN
         else {
             statusBox.innerText = "✅ KONDISI PASAR STABIL";
             statusBox.classList.add('bg-success');
-            saranText.innerHTML = "Harga wajar. Pedagang membeli dengan baik dan Petani sejahtera.";
+            saranText.innerHTML = "Harga wajar. Transaksi aman.";
         }
 
         document.getElementById('resultArea').style.display = 'block';
@@ -387,17 +379,16 @@
         if (chartInstance) chartInstance.destroy();
 
         let colorPedagang = '#fbc02d';
-        if (dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; 
-        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; 
+        if (dbTani[9] > 0 && dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; // Merah
+        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; // Oranye
 
-        // Update Label Grafik
         let labelGov = 'Gov (' + dbTani[12] + '%)';
-        let labelTarget = 'Target (' + dbTani[13] + '%)';
+        let labelTarget = 'Target (+' + dbTani[13] + '%)';
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Biaya HPP', labelGov, labelTarget, 'Pedagang'],
+                labels: ['HPP', labelGov, labelTarget, 'Pedagang'],
                 datasets: [{
                     label: 'Harga (Rp/Kg)',
                     data: [dbTani[6], dbTani[7], dbTani[8], dbTani[9]],
