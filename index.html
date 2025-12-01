@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Tani - Fix Trigger Operasi Pasar</title>
+    <title>Sistem Tani - Biaya Lengkap & Validasi</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -15,7 +15,7 @@
             --danger: #c62828;
             --warning: #f9a825;
             --white: #ffffff;
-            --neutral: #757575;
+            --neutral: #616161;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
@@ -32,8 +32,8 @@
         .card-header { font-weight: bold; color: var(--primary); margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; font-size: 15px; }
-        input:focus { outline: none; border-color: var(--accent); background: #f9fff9; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; }
+        input:focus { outline: none; border-color: var(--accent); background: #f9fff9; box-shadow: 0 0 5px rgba(46, 125, 50, 0.2); }
 
         .highlight-box {
             background-color: var(--highlight);
@@ -63,6 +63,31 @@
         .op-badge { display: inline-block; background: #000; color: #fff; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-top: 10px; font-size: 0.8em; }
 
         .status-selector { background: #e0f2f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #80cbc4; }
+        
+        /* HIGHLIGHT RUPIAH */
+        .input-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1.2fr; 
+            gap: 15px; 
+            align-items: stretch; 
+            margin-bottom: 10px; 
+        }
+
+        .display-box-base {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em; 
+            font-weight: 800; 
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            transition: all 0.3s ease;
+        }
+
+        .display-green { background: linear-gradient(145deg, #e8f5e9, #c8e6c9); color: #1b5e20; border: 2px solid #2e7d32; }
+        .display-blue { background: linear-gradient(145deg, #e1f5fe, #b3e5fc); color: #01579b; border: 2px solid #0288d1; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         td { padding: 8px; border-bottom: 1px solid #eee; }
@@ -80,8 +105,8 @@
 
 <div class="container">
     <header>
-        <h1>🌾 Perhitungan HPP & Operasi Pasar</h1>
-        <div class="subtitle">HPP dan Harga Gabah Kering Giling penetapan pemerintah</div>
+        <h1>🌾 Perhitungan HPP & Validasi Harga</h1>
+        <div class="subtitle">Analisis Biaya Lengkap, Standar Pemerintah, dan Operasi Pasar</div>
     </header>
 
     <div class="status-selector">
@@ -90,20 +115,24 @@
             <option value="berhasil">✅ PANEN BERHASIL (NORMAL)</option>
             <option value="gagal">⛔ GAGAL PANEN (PUSO)</option>
         </select>
-        <small id="pusoNote" style="display:none; color: var(--danger); font-weight:bold;">*Gagal panen (Puso) otomatis memicu rekomendasi Operasi Pasar.</small>
+        <small id="pusoNote" style="display:none; color: var(--danger); font-weight:bold;">*Puso = Otomatis Rekomendasi Operasi Pasar.</small>
     </div>
 
     <div class="grid-main">
         <div class="card">
-            <div class="card-header">1. Input Biaya & Hasil Panen <span style="text-transform: none;">/Ha</span></div>
+            <div class="card-header">1. Rincian Biaya & Hasil Panen <span style="text-transform: none;">/Ha</span></div>
             
             <label>Biaya Bibit (Rp)</label> <input type="number" id="inBibit" placeholder="0" oninput="hitungRealTime()">
             <label>Biaya Pupuk (Rp)</label> <input type="number" id="inPupuk" placeholder="0" oninput="hitungRealTime()">
             <label>Biaya Pestisida (Rp)</label> <input type="number" id="inPestisida" placeholder="0" oninput="hitungRealTime()">
             <label>Biaya Tenaga Kerja (Rp)</label> <input type="number" id="inTenaga" placeholder="0" oninput="hitungRealTime()">
             
-            <div style="text-align: right; font-weight: bold; color: #555; margin-bottom: 15px;">
-                Total Biaya: <span id="dispTotalBiaya">Rp 0</span>
+            <label>Biaya Bahan Bakar (Rp)</label> <input type="number" id="inBBM" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Sewa Lahan (Rp)</label> <input type="number" id="inSewa" placeholder="0" oninput="hitungRealTime()">
+            <label>Biaya Operasional (Rp)</label> <input type="number" id="inOperasional" placeholder="0" oninput="hitungRealTime()">
+            
+            <div style="text-align: right; font-weight: bold; color: #555; margin-bottom: 15px; border-top: 2px dashed #ccc; padding-top: 10px;">
+                Total Biaya: <span id="dispTotalBiaya" style="color:var(--primary); font-size:1.2em;">Rp 0</span>
             </div>
 
             <div id="divInputPanen">
@@ -117,21 +146,21 @@
             </div>
         </div>
 
-<div class="card">
+        <div class="card">
             <div class="card-header">2. Target & Harga Pasar</div>
             
             <label>Target Keuntungan Petani (%)</label>
             <div class="input-row">
                 <input type="number" id="inTargetPersen" placeholder="Cth: 20" oninput="hitungRealTime()" style="margin-bottom:0;">
-                <div id="dispTargetRupiah" class="display-box">Rp 0</div>
+                <div id="dispTargetRupiah" class="display-box-base display-green">Rp 0</div>
             </div>
             
             <label>Standar Harga Pemerintah (%)</label>
             <div class="input-row">
                 <input type="number" id="inGovPersen" placeholder="Cth: 30" oninput="hitungRealTime()" style="margin-bottom:0;">
-                <div id="dispGovRupiah" class="display-box-blue">Rp 0</div>
+                <div id="dispGovRupiah" class="display-box-base display-blue">Rp 0</div>
             </div>
-            <small style="color: #666; display:block; margin-bottom:15px; margin-top: 5px;">*Validasi: Pemerintah harus lebih tinggi dari Petani.</small>
+            <small style="color: #666; display:block; margin-bottom:20px; font-style: italic;">*Syarat: Pemerintah harus lebih tinggi dari Petani</small>
 
             <label>Harga Beli Pedagang Beras</label>
             <input type="number" id="inHargaPedagang" placeholder="Tawaran pembeli...">
@@ -160,19 +189,20 @@
 <script>
     /*
      * DATABASE ARRAY
-     * Index [0-3]: Komponen Biaya
-     * Index [4]: Total Biaya (Rupiah)
+     * Index [0-3]: Biaya Lama
+     * Index [4]: Total Biaya (Sum All)
      * Index [5]: Total Panen (Kg)
      * Index [6]: HPP Per Kg
-     * Index [7]: Harga Pemerintah (Hasil Hitung Input Gov%)
-     * Index [8]: Target Petani (Hasil Hitung Input Petani%)
+     * Index [7]: Harga Pemerintah
+     * Index [8]: Target Petani
      * Index [9]: Tawaran Pedagang
      * Index [10]: Harga Pasar
      * Index [11]: Status Panen (1=Berhasil, 0=Puso)
-     * Index [12]: Input Persentase Pemerintah (Misal 30)
-     * Index [13]: Input Persentase Target Petani (Misal 20)
+     * Index [12]: Input Persentase Pemerintah
+     * Index [13]: Input Persentase Target Petani
+     * Index [14,15,16]: Biaya Baru (BBM, Sewa, Operasional)
      */
-    let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
+    let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0];
     let chartInstance = null;
 
     const formatRp = (val) => "Rp " + new Intl.NumberFormat('id-ID').format(val);
@@ -194,13 +224,18 @@
     }
 
     function hitungRealTime() {
-        // 1. Hitung Biaya
+        // 1. Hitung Semua Komponen Biaya
         let b1 = parseFloat(document.getElementById('inBibit').value) || 0;
         let b2 = parseFloat(document.getElementById('inPupuk').value) || 0;
         let b3 = parseFloat(document.getElementById('inPestisida').value) || 0;
         let b4 = parseFloat(document.getElementById('inTenaga').value) || 0;
         
-        dbTani[4] = b1 + b2 + b3 + b4; // Total Biaya
+        // Input Baru
+        let b5 = parseFloat(document.getElementById('inBBM').value) || 0;
+        let b6 = parseFloat(document.getElementById('inSewa').value) || 0;
+        let b7 = parseFloat(document.getElementById('inOperasional').value) || 0;
+        
+        dbTani[4] = b1 + b2 + b3 + b4 + b5 + b6 + b7; // Total Biaya Lengkap
         
         // 2. Cek Puso
         let statusStr = document.getElementById('statusPanen').value;
@@ -265,18 +300,17 @@
         document.getElementById('resultArea').style.display = 'block';
 
         // --- VALIDASI: GOV HARUS > PETANI ---
-        if (dbTani[11] === 1 && dbTani[6] > 0) { // Hanya validasi jika panen berhasil
+        if (dbTani[11] === 1 && dbTani[6] > 0) {
              if (dbTani[7] <= dbTani[8]) {
                 statusBox.innerHTML = "⛔ VALIDASI ERROR";
                 statusBox.classList.add('bg-neutral');
                 saranText.innerHTML = `
-                    Input Tidak Valid. <strong>Harga Pemerintah (${formatRp(dbTani[7])})</strong> harus disetting lebih tinggi dari <strong>Target Petani (${formatRp(dbTani[8])})</strong>.
-                    <br>Silakan naikkan Persen Pemerintah atau turunkan Persen Target Petani.
+                    Input Tidak Valid. <strong>Harga Pemerintah (${formatRp(dbTani[7])})</strong> harus lebih tinggi dari <strong>Target Petani (${formatRp(dbTani[8])})</strong>.
+                    <br>Silakan sesuaikan persentase input.
                 `;
-                tabel.innerHTML = ""; // Kosongkan tabel
-                // Clear chart
+                tabel.innerHTML = ""; 
                 if (chartInstance) chartInstance.destroy();
-                return; // Stop Proses
+                return; 
             }
         }
 
@@ -326,15 +360,13 @@
         }
         
         // 2. TRIGGER OPERASI PASAR (INFLASI)
-        // Syarat: Harga Pedagang > Harga Pemerintah
-        // (Note: Karena ada validasi Petani < Gov, maka jika Pedagang > Gov, otomatis Pedagang > Petani juga)
         else if (dbTani[9] > dbTani[7]) {
             statusBox.innerText = "⚠️ HARGA MELAMBUNG TINGGI";
             statusBox.classList.add('bg-ops');
             saranText.innerHTML = `
                 <div class='op-badge'>SEGERA DILAKUKAN OPERASI PASAR</div><br>
                 Harga Pedagang (${formatRp(dbTani[9])}) sudah melampaui batas atas Standar Pemerintah (${formatRp(dbTani[7])}).<br>
-                Ini indikasi inflasi pasar yang berbahaya.
+                Indikasi inflasi pasar berbahaya.
             `;
         }
 
@@ -353,7 +385,7 @@
         else {
             statusBox.innerText = "✅ KONDISI PASAR STABIL";
             statusBox.classList.add('bg-success');
-            saranText.innerHTML = "Harga wajar. Pedagang membeli di range yang aman (Di atas target petani, tapi tidak melebihi batas pemerintah).";
+            saranText.innerHTML = "Harga wajar. Pedagang membeli di range yang aman.";
         }
 
         updateChart();
