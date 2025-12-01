@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Tani - Hitung Biaya Per Kg</title>
+    <title>Sistem Tani - Harga Pemerintah Dinamis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -58,13 +58,11 @@
         .bg-danger { background: var(--danger); animation: pulse 2s infinite; }
         .bg-warning { background: var(--warning); color: #333; }
         .bg-success { background: var(--accent); }
-        .bg-puso { background: #b71c1c; border: 2px solid #ff5252; } /* Merah Gelap untuk Puso */
-        .bg-ops { background: #ff6f00; color: white; } /* Oranye Gelap untuk Operasi Pasar */
+        .bg-puso { background: #b71c1c; border: 2px solid #ff5252; } 
+        .bg-ops { background: #ff6f00; color: white; } 
 
-        /* Badge Operasi Pasar */
         .op-badge { display: inline-block; background: #000; color: #fff; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-top: 10px; font-size: 0.8em; }
 
-        /* Status Panen Selector (Fitur Baru) */
         .status-selector { background: #e0f2f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #80cbc4; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -83,8 +81,8 @@
 
 <div class="container">
     <header>
-        <h1>🌾 Perhitungan HPP & Harga Gabah Kering Giling</h1>
-        <div class="subtitle">Analisis Biaya Produksi Per Kg vs Harga Pemerintah & Pedagang</div>
+        <h1>🌾 Kalkulator Tani & Operasi Pasar</h1>
+        <div class="subtitle">HPP, Puso, dan Harga Pemerintah Dinamis (175%-200%)</div>
     </header>
 
     <div class="status-selector">
@@ -148,6 +146,8 @@
                     <li>Harga Pedagang > Harga Pemerintah</li>
                     <li>HPP Mines (Petani Rugi)</li>
                 </ul>
+                <hr>
+                <small style="color: #d84315;">*Harga Pemerintah akan diacak (Random) antara 175% - 200% setiap kali Analisis.</small>
             </div>
 
             <button class="btn-action" onclick="jalankanAnalisis()">ANALISIS SEKARANG</button>
@@ -175,39 +175,38 @@
 <script>
     /*
      * DATABASE ARRAY
-     * Index [0-3]: Komponen Biaya (Bibit, Pupuk, Pestisida, Tenaga)
+     * Index [0-3]: Komponen Biaya
      * Index [4]: Total Biaya (Rupiah)
-     * Index [5]: Total Panen (Kg) -> 0 Jika Puso
-     * Index [6]: BIAYA PRODUKSI PER KG (HPP)
-     * Index [7]: Harga Pemerintah (175%)
+     * Index [5]: Total Panen (Kg)
+     * Index [6]: HPP Per Kg
+     * Index [7]: Harga Pemerintah (RANDOM 175%-200%)
      * Index [8]: Target Petani (200%)
      * Index [9]: Tawaran Pedagang
-     * Index [10]: Harga Pasar Konsumen (BARU)
-     * Index [11]: Status Panen (1=Berhasil, 0=Puso) (BARU)
+     * Index [10]: Harga Pasar
+     * Index [11]: Status Panen (1=Berhasil, 0=Puso)
+     * Index [12]: Persentase Random yang didapat (Untuk Display)
      */
-    let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+    let dbTani = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
     let chartInstance = null;
 
     const formatRp = (val) => "Rp " + new Intl.NumberFormat('id-ID').format(val);
 
-    // FUNGSI BARU: Toggle Tampilan saat Puso
     function toggleInputPanen() {
         const status = document.getElementById('statusPanen').value;
         const divPanen = document.getElementById('divInputPanen');
         const pusoNote = document.getElementById('pusoNote');
 
         if (status === 'gagal') {
-            divPanen.style.display = 'none'; // Sembunyikan input panen
+            divPanen.style.display = 'none';
             pusoNote.style.display = 'block';
-            document.getElementById('inPanen').value = 0; // Reset panen ke 0
-            hitungRealTime(); // Recalculate
+            document.getElementById('inPanen').value = 0;
+            hitungRealTime(); 
         } else {
             divPanen.style.display = 'block';
             pusoNote.style.display = 'none';
         }
     }
 
-    // FUNGSI 1: Hitung Real-time saat mengetik
     function hitungRealTime() {
         let b1 = parseFloat(document.getElementById('inBibit').value) || 0;
         let b2 = parseFloat(document.getElementById('inPupuk').value) || 0;
@@ -215,32 +214,28 @@
         let b4 = parseFloat(document.getElementById('inTenaga').value) || 0;
         
         dbTani[0]=b1; dbTani[1]=b2; dbTani[2]=b3; dbTani[3]=b4;
-        dbTani[4] = b1 + b2 + b3 + b4; // Total Biaya
+        dbTani[4] = b1 + b2 + b3 + b4; 
 
-        // Ambil Status Panen
         let statusStr = document.getElementById('statusPanen').value;
         dbTani[11] = (statusStr === 'berhasil') ? 1 : 0;
 
-        // Ambil input Panen
         if (dbTani[11] === 1) {
             dbTani[5] = parseFloat(document.getElementById('inPanen').value) || 0;
         } else {
-            dbTani[5] = 0; // Puso = 0 Kg
+            dbTani[5] = 0; 
         }
 
         document.getElementById('dispTotalBiaya').innerText = formatRp(dbTani[4]);
 
-        // HITUNG BIAYA PER KG (HPP) - Hanya jika Panen Berhasil
         if (dbTani[5] > 0) {
             dbTani[6] = dbTani[4] / dbTani[5]; 
             document.getElementById('dispBiayaPerKg').innerText = formatRp(dbTani[6]);
         } else {
             dbTani[6] = 0;
-            document.getElementById('dispBiayaPerKg').innerText = "Rp 0 (Puso/Null)";
+            document.getElementById('dispBiayaPerKg').innerText = "Rp 0 (Puso)";
         }
     }
 
-    // FUNGSI 2: Analisis Lengkap
     function jalankanAnalisis() {
         hitungRealTime(); 
         
@@ -251,7 +246,7 @@
         const saranText = document.getElementById('saranText');
         const tabel = document.getElementById('tabelRincian');
         
-        statusBox.className = 'status-banner'; // Reset class
+        statusBox.className = 'status-banner'; 
 
         // --- SKENARIO 1: GAGAL PANEN (PUSO) ---
         if (dbTani[11] === 0) {
@@ -261,17 +256,15 @@
             saranText.innerHTML = `
                 <div class='op-badge'>PERLU OPERASI PASAR & BANTUAN</div><br><br>
                 Tidak ada panen. Petani mengalami kerugian total biaya produksi sebesar <b>${formatRp(dbTani[4])}</b>.<br>
-                Pemerintah wajib melakukan Operasi Pasar untuk menjaga stok beras dan memberikan bantuan/asuransi kepada petani.
+                Pemerintah wajib melakukan Operasi Pasar.
             `;
-
             tabel.innerHTML = `
                 <tr><td>Total Kerugian</td><td class="text-right bold" style="color:red;">${formatRp(dbTani[4])}</td></tr>
                 <tr><td>Harga Pasar Saat Ini</td><td class="text-right">${formatRp(dbTani[10])}</td></tr>
             `;
-
             document.getElementById('resultArea').style.display = 'block';
             renderChartPuso();
-            return; // Stop di sini
+            return;
         }
 
         // --- SKENARIO 2: PANEN BERHASIL (NORMAL) ---
@@ -280,17 +273,23 @@
             return;
         }
 
-        dbTani[7] = dbTani[6] * 1.75; // Pemerintah 175%
-        dbTani[8] = dbTani[6] * 2.00; // Petani 200%
+        // --- LOGIKA BARU: HARGA PEMERINTAH RANDOM (175% - 200%) ---
+        // Math.random() = 0.0 s/d 1.0
+        // Range 0.25 (karena 2.00 - 1.75 = 0.25)
+        let randomFactor = 1.75 + (Math.random() * 0.25); 
+        
+        dbTani[7] = dbTani[6] * randomFactor; // Harga Gov Random
+        dbTani[8] = dbTani[6] * 2.00; // Harga Target Petani Tetap 200%
+        dbTani[12] = (randomFactor * 100).toFixed(1); // Simpan % untuk display (misal: "182.5")
 
-        // Render Tabel Normal
+        // Render Tabel
         tabel.innerHTML = `
             <tr style="background-color: #e3f2fd;">
                 <td><strong>Biaya Produksi Per Kg (HPP)</strong></td>
                 <td class="text-right bold">${formatRp(dbTani[6])}</td>
             </tr>
             <tr style="color: blue;">
-                <td>HBGKG Pemerintah (175%)</td>
+                <td>HBGKG Pemerintah (<strong>${dbTani[12]}%</strong>)</td>
                 <td class="text-right">${formatRp(dbTani[7])}</td>
             </tr>
             <tr style="color: green;">
@@ -307,34 +306,30 @@
             </tr>
         `;
 
-        // LOGIKA KEPUTUSAN & OPERASI PASAR
+        // LOGIKA KEPUTUSAN (Menggunakan Harga Gov yang Random)
         if (dbTani[9] > dbTani[7]) {
-            // Case: Harga Pedagang > Harga Pemerintah (Inflasi)
             statusBox.innerText = "⚠️ HARGA TINGGI (INFLASI PASAR)";
             statusBox.classList.add('bg-ops');
             saranText.innerHTML = `
                 <div class='op-badge'>WAJIB OPERASI PASAR</div><br>
-                Harga pedagang (${formatRp(dbTani[9])}) melambung di atas standar Pemerintah (${formatRp(dbTani[7])}).<br>
-                Ini menguntungkan petani sesaat, tapi berbahaya bagi konsumen. Pemerintah perlu intervensi stabilisasi harga.
+                Harga pedagang (${formatRp(dbTani[9])}) melambung di atas standar Pemerintah saat ini (${dbTani[12]}% / ${formatRp(dbTani[7])}).<br>
+                Berbahaya bagi inflasi pasar.
             `;
         } 
         else if (dbTani[9] < dbTani[6]) {
-            // Case: Rugi (HPP Mines)
             statusBox.innerText = "⛔ BAHAYA: PETANI RUGI (HPP MINES)";
             statusBox.classList.add('bg-danger');
             saranText.innerHTML = `
                 <div class='op-badge'>OPERASI PASAR (SERAP GABAH)</div><br>
-                Harga pedagang di bawah modal produksi. Pemerintah wajib membeli gabah petani (Offtaker) agar petani tidak bangkrut.
+                Harga pedagang di bawah modal produksi. Pemerintah wajib membeli gabah petani (Offtaker).
             `;
         } 
         else if (dbTani[9] < dbTani[7]) {
-            // Case: Untung dikit
             statusBox.innerText = "⚠️ PERINGATAN: DI BAWAH STANDAR";
             statusBox.classList.add('bg-warning');
-            saranText.innerHTML = "Harga di atas modal, tapi di bawah standar pemerintah. Negosiasi ulang.";
+            saranText.innerHTML = `Harga di atas modal, tapi di bawah standar Pemerintah hari ini (${dbTani[12]}%). Negosiasi ulang.`;
         } 
         else {
-            // Case: Aman
             statusBox.innerText = "✅ KONDISI PASAR STABIL";
             statusBox.classList.add('bg-success');
             saranText.innerHTML = "Harga wajar dan menguntungkan. Tidak perlu Operasi Pasar.";
@@ -344,7 +339,6 @@
         updateChart();
     }
 
-    // Grafik Puso (Hanya menampilkan kerugian)
     function renderChartPuso() {
         const ctx = document.getElementById('myChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
@@ -363,19 +357,21 @@
         });
     }
 
-    // Grafik Normal
     function updateChart() {
         const ctx = document.getElementById('myChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
 
         let colorPedagang = '#fbc02d';
-        if (dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; // Rugi
-        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; // Inflasi/Tinggi
+        if (dbTani[9] < dbTani[6]) colorPedagang = '#d32f2f'; 
+        else if (dbTani[9] > dbTani[7]) colorPedagang = '#ff6f00'; 
+
+        // Update Label Grafik agar user tahu % pemerintah
+        let labelGov = 'Gov (' + dbTani[12] + '%)';
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Biaya HPP', 'Batas Gov (175%)', 'Target (200%)', 'Pedagang'],
+                labels: ['Biaya HPP', labelGov, 'Target (200%)', 'Pedagang'],
                 datasets: [{
                     label: 'Harga (Rp/Kg)',
                     data: [dbTani[6], dbTani[7], dbTani[8], dbTani[9]],
