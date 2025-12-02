@@ -173,7 +173,7 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-4 top-3 text-indigo-800 font-bold">Rp</span>
-                            <input type="number" id="inputTraderPrice" class="w-full p-3 pl-12 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="4000">
+                            <input type="number" id="inputTraderPrice" class="w-full p-3 pl-12 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="9000">
                         </div>
                         <p class="text-xs text-indigo-600 mt-2">Masukkan harga per Kg beras.</p>
                     </div>
@@ -188,8 +188,10 @@
             <div id="statusBanner" class="rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500 transform scale-100">
                 <div class="flex items-center gap-4">
                     <div id="statusIconBg" class="bg-white/20 p-3 rounded-full backdrop-blur-sm">
-                        <i id="statusIcon" data-lucide="check-circle" class="w-8 h-8 text-white"></i>
-                    </div>
+                    <span id="statusIcon">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-white"></i>
+                    </span>
+                </div>
                     <div>
                         <h2 id="statusTitle" class="text-2xl font-bold">PASAR STABIL</h2>
                         <p id="statusDesc" class="text-white/90 text-sm">Harga pedagang masih dalam batas wajar.</p>
@@ -220,21 +222,21 @@
                 <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-gray-400 hover-card">
                     <p class="text-xs text-gray-500 font-bold uppercase">HPP (Modal)</p>
                     <h3 id="displayHPP" class="text-2xl font-bold text-gray-700 mt-1">Rp 0</h3>
-                    <p class="text-xs text-gray-400 mt-2">Biaya per Kg Gabah</p>
+                    <p class="text-xs text-gray-400 mt-2">Biaya per Kg Beras</p>
                 </div>
                 
                 <!-- Petani Card -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-green-500 hover-card">
                     <p class="text-xs text-green-600 font-bold uppercase">Target Jual Petani</p>
                     <h3 id="displayFarmerPrice" class="text-2xl font-bold text-green-700 mt-1">Rp 0</h3>
-                    <p class="text-xs text-gray-400 mt-2">Gabah (GKG)</p>
+                    <p class="text-xs text-gray-400 mt-2">Beras</p>
                 </div>
 
                 <!-- Pemerintah Card -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500 hover-card">
                     <p class="text-xs text-blue-600 font-bold uppercase">Standar Pemerintah</p>
                     <h3 id="displayGovPrice" class="text-2xl font-bold text-blue-700 mt-1">Rp 0</h3>
-                    <p class="text-xs text-gray-400 mt-2">Batas Atas Gabah</p>
+                    <p class="text-xs text-gray-400 mt-2">Batas Atas Beras</p>
                 </div>
             </div>
 

@@ -86,75 +86,131 @@ function calculate() {
     // 5. Trader Input Logic
     const priceTrader = Number(els.inputTrader.value) || 0;
 
-    // 6. Update UI Labels
-    els.labelFarmer.innerText = pFarmer + '%';
-    els.valFarmerRp.innerText = `(+${formatRp(marginFarmer)})`;
-
-    els.labelGov.innerText = pGov + '%';
-    els.valGovRp.innerText = `(+${formatRp(marginGov)})`;
-
+                const marginFarmerPerBeras = marginFarmer * 1.57;
+                const marginGovPerBeras = marginGov * 1.57;
+    
+                // 6. Update UI Labels
+                els.labelFarmer.innerText = pFarmer + '%';
+                els.valFarmerRp.innerText = `(+${formatRp(marginFarmerPerBeras)})`;
+    
+                els.labelGov.innerText = pGov + '%';
+                els.valGovRp.innerText = `(+${formatRp(marginGovPerBeras)})`;
     // 7. Update Result Cards
-    if (!isPuso) {
-        els.dHPP.innerText = formatRp(hpp);
-        els.dFarmer.innerText = formatRp(priceFarmer);
-        els.dGov.innerText = formatRp(priceGov);
-        els.lossPanel.classList.add('hidden');
-    } else {
-        els.dHPP.innerText = "-";
-        els.dFarmer.innerText = "-";
-        els.dGov.innerText = "-";
-        els.lossPanel.classList.remove('hidden');
-        els.displayTotalLoss.innerText = formatRp(totalCost);
-    }
-
+                if (!isPuso) {
+                    els.dHPP.innerText = formatRp(hpp * 1.57);
+                    els.dFarmer.innerText = formatRp(priceFarmer * 1.57);
+                    els.dGov.innerText = formatRp(priceGov * 1.57);
+                    els.lossPanel.classList.add('hidden');
+                } else {
+                    els.dHPP.innerText = "-";
+                    els.dFarmer.innerText = "-";
+                    els.dGov.innerText = "-";
+                    els.lossPanel.classList.remove('hidden');
+                    els.displayTotalLoss.innerText = formatRp(totalCost);
+                }
     // 8. Update Status Logic
     updateStatus(isPuso, priceTrader, priceGov, priceFarmer, hpp);
     updateChart(isPuso, hpp, priceFarmer, priceGov, priceTrader);
 }
 
 function updateStatus(puso, traderPrice, govPrice, farmerPrice, hpp) {
+
     // Reset Banner Style
+
     els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500";
+
     els.actionBtn.classList.add('hidden');
+
     
-    const highLimit = govPrice + (govPrice * 0.50); // 50% limit trigger
+
+    const govPricePerBeras = govPrice * 1.57;
+
+    const farmerPricePerBeras = farmerPrice * 1.57;
+
+    const highLimit = govPricePerBeras + (govPricePerBeras * 0.50); // 50% limit trigger
+
+
+
+    let iconName = 'thumbs-up'; // Default icon
+
+
 
     if (puso) {
+
         els.banner.classList.add('bg-red-700', 'animate-status-danger');
+
         els.statusTitle.innerText = "DARURAT: GAGAL PANEN";
+
         els.statusDesc.innerText = "Produksi nol. Kerugian masif terdeteksi.";
-        els.statusIcon.setAttribute('data-lucide', 'alert-octagon');
+
+        iconName = 'alert-octagon';
+
         els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
+
         els.actionBtn.classList.remove('hidden');
+
     } 
+
     else if (hpp <= 0) {
+
         els.banner.classList.add('bg-gray-500');
+
         els.statusTitle.innerText = "DATA BELUM LENGKAP";
+
         els.statusDesc.innerText = "Mohon lengkapi data biaya dan hasil panen.";
-        els.statusIcon.setAttribute('data-lucide', 'help-circle');
+
+        iconName = 'help-circle';
+
     }
+
     else if (traderPrice > highLimit) {
+
         els.banner.classList.add('bg-red-600', 'animate-status-danger');
+
         els.statusTitle.innerText = "HARGA PASAR MELONJAK";
+
         els.statusDesc.innerText = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi 50% batas pemerintah (${formatRp(highLimit)}).`;
-        els.statusIcon.setAttribute('data-lucide', 'trending-up');
+
+        iconName = 'trending-up';
+
         els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
+
         els.actionBtn.classList.remove('hidden');
+
     }
-    else if (traderPrice < farmerPrice && traderPrice > 0) { // Using Farmer Target as baseline for warning
+
+    else if (traderPrice < farmerPricePerBeras && traderPrice > 0) { // Using Farmer Target as baseline for warning
+
         els.banner.classList.add('bg-yellow-500', 'animate-status-warning');
+
         els.statusTitle.innerText = "PETANI TIDAK UNTUNG";
-        els.statusDesc.innerText = `Tawaran Harga Beras di bawah target jual petani (${formatRp(farmerPrice)}).`;
-        els.statusIcon.setAttribute('data-lucide', 'thumbs-down');
+
+        els.statusDesc.innerText = `Tawaran Harga Beras di bawah target jual petani (${formatRp(farmerPricePerBeras)}).`;
+
+        iconName = 'thumbs-down';
+
     }
+
     else {
+
         els.banner.classList.add('bg-emerald-600');
+
         els.statusTitle.innerText = "PASAR KONDUSIF";
+
         els.statusDesc.innerText = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
-        els.statusIcon.setAttribute('data-lucide', 'check-circle-2', 'thumbs-up');
+
+        iconName = 'thumbs-up';
+
     }
+
     
+
+    // Update the icon
+
+    els.statusIcon.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8 text-white"></i>`;
+
     lucide.createIcons();
+
 }
 
 function togglePuso(state) {
@@ -171,7 +227,13 @@ function togglePuso(state) {
 
 function updateChart(puso, hpp, farmer, gov, trader) {
     const ctx = document.getElementById('mainChart').getContext('2d');
-    const data = puso ? [0, 0, 0, 0] : [hpp, farmer, gov, trader];
+    
+    // Convert gabah prices to beras prices
+    const hppPerBeras = hpp * 1.57;
+    const farmerPerBeras = farmer * 1.57;
+    const govPerBeras = gov * 1.57;
+
+    const data = puso ? [0, 0, 0, 0] : [hppPerBeras, farmerPerBeras, govPerBeras, trader];
     
     if (chart) {
         chart.data.datasets[0].data = data;
