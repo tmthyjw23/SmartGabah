@@ -114,103 +114,75 @@ function calculate() {
 }
 
 function updateStatus(puso, traderPrice, govPrice, farmerPrice, hpp) {
-
-    // Reset Banner Style
-
-    els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500";
-
-    els.actionBtn.classList.add('hidden');
-
-    
-
+    // --- Price Conversions & Limits ---
     const govPricePerBeras = govPrice * 1.57;
-
     const farmerPricePerBeras = farmerPrice * 1.57;
+    const highLimit = govPricePerBeras * 1.5; // 50% emergency markup
 
-    const highLimit = govPricePerBeras + (govPricePerBeras * 0.50); // 50% limit trigger
+    // --- Variables for new status ---
+    let iconName, bannerClass, title, description;
+    let showActionButton = false;
 
-
-
-    let iconName = 'thumbs-up'; // Default icon
-
-
-
+    // --- State Evaluation (ordered by priority) ---
     if (puso) {
-
-        els.banner.classList.add('bg-red-700', 'animate-status-danger');
-
-        els.statusTitle.innerText = "DARURAT: GAGAL PANEN";
-
-        els.statusDesc.innerText = "Produksi nol. Kerugian masif terdeteksi.";
-
+        bannerClass = 'bg-red-700 animate-status-danger';
+        title = "DARURAT: GAGAL PANEN";
+        description = "Produksi nol. Kerugian masif terdeteksi.";
         iconName = 'alert-octagon';
-
-        els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
-
-        els.actionBtn.classList.remove('hidden');
-
+        showActionButton = true;
     } 
-
     else if (hpp <= 0) {
-
-        els.banner.classList.add('bg-gray-500');
-
-        els.statusTitle.innerText = "DATA BELUM LENGKAP";
-
-        els.statusDesc.innerText = "Mohon lengkapi data biaya dan hasil panen.";
-
+        bannerClass = 'bg-gray-500';
+        title = "DATA BELUM LENGKAP";
+        description = "Mohon lengkapi data biaya dan hasil panen.";
         iconName = 'help-circle';
-
     }
-
+    else if (traderPrice <= 0) {
+        bannerClass = 'bg-sky-600';
+        title = "MENUNGGU PENAWARAN";
+        description = "Masukkan harga tawaran dari pedagang untuk memulai analisis.";
+        iconName = 'mouse-pointer-click';
+    }
     else if (traderPrice > highLimit) {
-
-        els.banner.classList.add('bg-red-600', 'animate-status-danger');
-
-        els.statusTitle.innerText = "HARGA PASAR MELONJAK";
-
-        els.statusDesc.innerText = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi 50% batas pemerintah (${formatRp(highLimit)}).`;
-
+        bannerClass = 'bg-red-600 animate-status-danger';
+        title = "HARGA PASAR MELONJAK";
+        description = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi batas kritis pemerintah (${formatRp(highLimit)}).`;
         iconName = 'trending-up';
-
-        els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
-
-        els.actionBtn.classList.remove('hidden');
-
+        showActionButton = true;
     }
-
-    else if (traderPrice < farmerPricePerBeras && traderPrice > 0) { // Using Farmer Target as baseline for warning
-
-        els.banner.classList.add('bg-yellow-500', 'animate-status-warning');
-
-        els.statusTitle.innerText = "PETANI TIDAK UNTUNG";
-
-        els.statusDesc.innerText = `Tawaran Harga Beras di bawah target jual petani (${formatRp(farmerPricePerBeras)}).`;
-
+    else if (traderPrice > govPricePerBeras) {
+        bannerClass = 'bg-orange-500';
+        title = "HARGA DI ATAS STANDAR";
+        description = `Tawaran pedagang (${formatRp(traderPrice)}) di atas standar pemerintah (${formatRp(govPricePerBeras)}).`;
+        iconName = 'alert-circle';
+    }
+    else if (traderPrice < farmerPricePerBeras) {
+        bannerClass = 'bg-yellow-500 animate-status-warning';
+        title = "PETANI TIDAK UNTUNG";
+        description = `Tawaran pedagang (${formatRp(traderPrice)}) di bawah target jual petani (${formatRp(farmerPricePerBeras)}).`;
         iconName = 'thumbs-down';
-
     }
-
-    else {
-
-        els.banner.classList.add('bg-emerald-600');
-
-        els.statusTitle.innerText = "PASAR KONDUSIF";
-
-        els.statusDesc.innerText = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
-
+    else { // The ideal state: farmerPrice <= traderPrice <= govPrice
+        bannerClass = 'bg-emerald-600';
+        title = "PASAR KONDUSIF";
+        description = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
         iconName = 'thumbs-up';
-
     }
 
-    
-
-    // Update the icon
-
+    // --- Apply UI Changes ---
+    els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500 " + bannerClass;
+    els.statusTitle.innerText = title;
+    els.statusDesc.innerText = description;
     els.statusIcon.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8 text-white"></i>`;
+    
+    if (showActionButton) {
+        els.actionBtn.classList.remove('hidden');
+        els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
+    } else {
+        els.actionBtn.classList.add('hidden');
+    }
 
     lucide.createIcons();
-
 }
 
 function togglePuso(state) {
