@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem HPP & Operasi Pasar (Revisi 3)</title>
+    <title>Sistem HPP & Operasi Pasar (Final Fix)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -50,7 +50,7 @@
                         <i data-lucide="wheat" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900 leading-tight">Smart Tani Monitor V3</h1>
+                        <h1 class="text-xl font-bold text-gray-900 leading-tight">Smart Tani Monitor V4</h1>
                         <p class="text-xs text-gray-500">Sistem Penentuan HPP & Operasi Pasar</p>
                     </div>
                 </div>
@@ -99,6 +99,14 @@
                     </div>
                     
                     <div class="p-6 space-y-4">
+                        
+                        <!-- Total Biaya Display -->
+                        <div class="bg-gray-800 text-white p-4 rounded-lg flex justify-between items-center shadow-inner mb-4">
+                            <span class="text-sm font-medium text-gray-300">Total Modal Keluar</span>
+                            <span id="displayTotalCostInput" class="text-xl font-bold text-white">Rp 0</span>
+                        </div>
+
+                        <!-- Grid Input (Restored Fields) -->
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="text-xs font-semibold text-gray-500 mb-1 block">Benih</label>
@@ -121,7 +129,12 @@
                                 <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="1500000">
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Lainnya</label>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Bahan Bakar</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="300000">
+                            </div>
+                            <!-- Operasional Full Width for Balance -->
+                            <div class="col-span-2">
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Biaya Operasional Lainnya</label>
                                 <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="500000">
                             </div>
                         </div>
@@ -131,6 +144,14 @@
                             <div class="relative">
                                 <input type="number" id="inputHarvestResult" class="w-full p-3 pl-10 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="1500">
                                 <i data-lucide="weight" class="absolute left-3 top-3.5 w-5 h-5 text-indigo-400"></i>
+                            </div>
+                            <!-- Konversi Beras -->
+                            <div class="mt-2 pt-2 border-t border-indigo-200 flex justify-between items-center text-indigo-800">
+                                <span class="text-sm">Setara Beras (Estimasi):</span>
+                                <div class="text-right">
+                                    <span id="displayRiceResult" class="font-bold text-lg">0</span> <span class="text-sm font-semibold">Kg</span>
+                                    <span class="text-[10px] block opacity-70">(1 Kg Beras = 1.57 Kg Gabah)</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -169,21 +190,20 @@
                         <p id="govWarning" class="text-xs text-red-500 mt-1 hidden absolute -bottom-5 left-0 font-semibold">⚠️ Tidak boleh di bawah petani</p>
                     </div>
 
-                    <!-- INPUT HARGA PEDAGANG (DITAMBAHKAN KEMBALI) -->
-                    <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                        <label class="block text-sm font-bold text-orange-900 mb-2 flex items-center gap-2">
+                    <!-- INPUT HARGA PEDAGANG -->
+                    <div class="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <label class="block text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
                             <i data-lucide="store" class="w-4 h-4"></i> Harga Tawaran Pedagang
                         </label>
-                        <p class="text-xs text-orange-700 mb-2">Masukkan harga beli yang ditawarkan pedagang (Per Kg Gabah).</p>
                         <div class="relative">
-                            <span class="absolute left-4 top-3 text-orange-800 font-bold">Rp</span>
-                            <input type="number" id="inputTraderPrice" class="w-full p-3 pl-12 border-2 border-orange-300 rounded-lg text-lg font-bold text-orange-800 focus:outline-none focus:border-orange-500" value="4000">
+                            <span class="absolute left-4 top-3 text-indigo-800 font-bold">Rp</span>
+                            <input type="number" id="inputTraderPrice" class="w-full p-3 pl-12 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="4000">
                         </div>
+                        <p class="text-xs text-indigo-600 mt-2">Masukkan harga per Kg Gabah.</p>
                     </div>
                 </div>
             </div>
         </div>
-
 
         <!-- === KOLOM KANAN: HASIL / DASHBOARD === -->
         <div class="lg:col-span-7 space-y-6">
@@ -270,17 +290,13 @@
     <script>
         lucide.createIcons();
 
-        // --- State ---
-        let isPuso = false;
-        let chart = null;
-
         // --- Selectors ---
         const els = {
             inputs: document.querySelectorAll('.cost-input'),
             harvest: document.getElementById('inputHarvestResult'),
             sliderFarmer: document.getElementById('sliderFarmer'),
             sliderGov: document.getElementById('sliderGov'),
-            inputTrader: document.getElementById('inputTraderPrice'), // NEW INPUT
+            inputTrader: document.getElementById('inputTraderPrice'),
             
             // Labels
             labelFarmer: document.getElementById('labelFarmerPct'),
@@ -288,6 +304,10 @@
             valFarmerRp: document.getElementById('valFarmerRp'),
             valGovRp: document.getElementById('valGovRp'),
             govWarning: document.getElementById('govWarning'),
+            
+            // Displays - PERBAIKAN: Selector ini ditambahkan agar JS bisa mengubah teksnya
+            displayTotalCostInput: document.getElementById('displayTotalCostInput'),
+            displayRiceResult: document.getElementById('displayRiceResult'),
             
             // Display Results
             dHPP: document.getElementById('displayHPP'),
@@ -308,15 +328,35 @@
         };
 
         const formatRp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+        const formatNum = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
+
+        let isPuso = false;
+        let chart = null;
 
         function calculate() {
-            // 1. Costs
+            // 1. Costs & Total Cost Display (PERBAIKAN LOGIKA TOTAL BIAYA)
             let totalCost = 0;
-            els.inputs.forEach(i => totalCost += Number(i.value) || 0);
+            // Re-query inputs every calculation to ensure all fields are captured correctly
+            const currentInputs = document.querySelectorAll('.cost-input');
+            currentInputs.forEach(i => totalCost += Number(i.value) || 0);
+            
+            // Update Tampilan Total Biaya
+            if(els.displayTotalCostInput) {
+                els.displayTotalCostInput.innerText = formatRp(totalCost);
+            }
+
+            // 2. Harvest & Rice Conversion (PERBAIKAN LOGIKA BERAS)
             const harvest = Number(els.harvest.value) || 0;
+            const riceResult = harvest > 0 ? (harvest / 1.57) : 0;
+            
+            // Update Tampilan Hasil Beras
+            if(els.displayRiceResult) {
+                els.displayRiceResult.innerText = formatNum(riceResult);
+            }
+
             const hpp = harvest > 0 ? totalCost / harvest : 0;
 
-            // 2. Percentages & Constraints
+            // 3. Percentages & Constraints
             let pFarmer = Number(els.sliderFarmer.value);
             let pGov = Number(els.sliderGov.value);
 
@@ -326,39 +366,38 @@
                 els.govWarning.classList.add('hidden');
             }
             
-            // 3. Prices
+            // 4. Prices
             const marginFarmer = hpp * (pFarmer/100);
             const marginGov = hpp * (pGov/100);
             
             const priceFarmer = hpp + marginFarmer;
             const priceGov = hpp + marginGov;
             
-            // 4. Trader Input Logic
+            // 5. Trader Input Logic
             const priceTrader = Number(els.inputTrader.value) || 0;
 
-            // 5. Update UI Labels
+            // 6. Update UI Labels
             els.labelFarmer.innerText = pFarmer + '%';
             els.valFarmerRp.innerText = `(+${formatRp(marginFarmer)})`;
 
             els.labelGov.innerText = pGov + '%';
             els.valGovRp.innerText = `(+${formatRp(marginGov)})`;
 
-            // 6. Update Result Cards
+            // 7. Update Result Cards
             if (!isPuso) {
                 els.dHPP.innerText = formatRp(hpp);
                 els.dFarmer.innerText = formatRp(priceFarmer);
                 els.dGov.innerText = formatRp(priceGov);
-                els.lossPanel.classList.add('hidden'); // Hide loss panel if not Puso
+                els.lossPanel.classList.add('hidden');
             } else {
                 els.dHPP.innerText = "-";
                 els.dFarmer.innerText = "-";
                 els.dGov.innerText = "-";
-                // Show Loss
                 els.lossPanel.classList.remove('hidden');
                 els.displayTotalLoss.innerText = formatRp(totalCost);
             }
 
-            // 7. Update Status Logic (NEW TRIGGERS)
+            // 8. Update Status Logic
             updateStatus(isPuso, priceTrader, priceGov, priceFarmer, hpp);
             updateChart(isPuso, hpp, priceFarmer, priceGov, priceTrader);
         }
@@ -368,10 +407,9 @@
             els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500";
             els.actionBtn.classList.add('hidden');
             
-            const highLimit = govPrice + (govPrice * 0.50); // 50% above Gov Price
+            const highLimit = govPrice + (govPrice * 0.20); // 20% limit trigger
 
             if (puso) {
-                // KONDISI 1: PUSO -> HARUS OPERASI PASAR
                 els.banner.classList.add('bg-red-700', 'animate-status-danger');
                 els.statusTitle.innerText = "DARURAT: GAGAL PANEN";
                 els.statusDesc.innerText = "Produksi nol. Kerugian masif terdeteksi.";
@@ -380,35 +418,30 @@
                 els.actionBtn.classList.remove('hidden');
             } 
             else if (hpp <= 0) {
-                // KONDISI: INVALID
                 els.banner.classList.add('bg-gray-500');
                 els.statusTitle.innerText = "DATA BELUM LENGKAP";
                 els.statusDesc.innerText = "Mohon lengkapi data biaya dan hasil panen.";
                 els.statusIcon.setAttribute('data-lucide', 'help-circle');
             }
             else if (traderPrice > highLimit) {
-                // KONDISI 2: HARGA PEDAGANG > 20% DARI PEMERINTAH -> OPERASI PASAR
                 els.banner.classList.add('bg-red-600', 'animate-status-danger');
                 els.statusTitle.innerText = "HARGA PASAR MELONJAK";
-                els.statusDesc.innerText = `Harga pedagang (${formatRp(traderPrice)}) melebihi 50% batas pemerintah (${formatRp(highLimit)}).`;
+                els.statusDesc.innerText = `Harga pedagang (${formatRp(traderPrice)}) melebihi 20% batas pemerintah (${formatRp(highLimit)}).`;
                 els.statusIcon.setAttribute('data-lucide', 'trending-up');
                 els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
                 els.actionBtn.classList.remove('hidden');
             }
-            else if (traderPrice < hpp && traderPrice > 0) {
-                // KONDISI 3: HARGA PEDAGANG < TARGET PETANI -> PERINGATAN
+            else if (traderPrice < farmerPrice && traderPrice > 0) { // Using Farmer Target as baseline for warning
                 els.banner.classList.add('bg-yellow-500', 'animate-status-warning');
                 els.statusTitle.innerText = "PETANI TIDAK UNTUNG";
                 els.statusDesc.innerText = `Tawaran pedagang di bawah target jual petani (${formatRp(farmerPrice)}).`;
                 els.statusIcon.setAttribute('data-lucide', 'thumbs-down');
-                // No Operasi Pasar button, but distinct warning
             }
             else {
-                // KONDISI: AMAN
                 els.banner.classList.add('bg-emerald-600');
                 els.statusTitle.innerText = "PASAR KONDUSIF";
                 els.statusDesc.innerText = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
-                els.statusIcon.setAttribute('data-lucide', 'check-circle-2', 'thumbs-up');
+                els.statusIcon.setAttribute('data-lucide', 'check-circle-2');
             }
             
             lucide.createIcons();
@@ -459,12 +492,14 @@
             }
         }
 
-        // Listeners
-        els.inputs.forEach(i => i.addEventListener('input', calculate));
+        // Listeners - Note: Since HTML inputs might be re-rendered or added, we should bind dynamically or ensure all cost-inputs are bound
+        // For simplicity in this structure, we just bind all existing ones.
+        document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+        
         els.harvest.addEventListener('input', calculate);
         els.sliderFarmer.addEventListener('input', calculate);
         els.sliderGov.addEventListener('input', calculate);
-        els.inputTrader.addEventListener('input', calculate); // Listener for new input
+        els.inputTrader.addEventListener('input', calculate);
 
         // Init
         calculate();
