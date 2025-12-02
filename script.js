@@ -1,211 +1,179 @@
+// Initial setup
 lucide.createIcons();
 
-// --- Selectors ---
+// --- SELECTORS ---
 const els = {
     inputs: document.querySelectorAll('.cost-input'),
     harvest: document.getElementById('inputHarvestResult'),
     sliderFarmer: document.getElementById('sliderFarmer'),
     sliderGov: document.getElementById('sliderGov'),
     inputTrader: document.getElementById('inputTraderPrice'),
-    
-    // Labels
     labelFarmer: document.getElementById('labelFarmerPct'),
     labelGov: document.getElementById('labelGovPct'),
     valFarmerRp: document.getElementById('valFarmerRp'),
     valGovRp: document.getElementById('valGovRp'),
-    govWarning: document.getElementById('govWarning'),
-    
-    // Displays - PERBAIKAN: Selector ini ditambahkan agar JS bisa mengubah teksnya
-    displayTotalCostInput: document.getElementById('displayTotalCostInput'),
     displayRiceResult: document.getElementById('displayRiceResult'),
-    
-    // Display Results
     dHPP: document.getElementById('displayHPP'),
     dFarmer: document.getElementById('displayFarmerPrice'),
     dGov: document.getElementById('displayGovPrice'),
     lossPanel: document.getElementById('lossPanel'),
     displayTotalLoss: document.getElementById('displayTotalLoss'),
-    
-    // Status Banner
     banner: document.getElementById('statusBanner'),
     statusTitle: document.getElementById('statusTitle'),
     statusDesc: document.getElementById('statusDesc'),
     statusIcon: document.getElementById('statusIcon'),
     actionBtn: document.getElementById('actionBtn'),
-    
-    inputSection: document.getElementById('inputSection'),
-    resultGrid: document.getElementById('resultGrid')
+    resultGrid: document.getElementById('resultGrid'),
+    // Cards for enabling/disabling
+    costInputsCard: document.getElementById('costInputsCard'),
+    policyInputsCard: document.getElementById('policyInputsCard'),
 };
 
+// --- FORMATTERS ---
 const formatRp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 const formatNum = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
 
+// --- STATE ---
 let isPuso = false;
 let chart = null;
 
+// --- CORE CALCULATION ---
 function calculate() {
-    // 1. Costs & Total Cost Display (PERBAIKAN LOGIKA TOTAL BIAYA)
-    let totalCost = 0;
-    // Re-query inputs every calculation to ensure all fields are captured correctly
-    const currentInputs = document.querySelectorAll('.cost-input');
-    currentInputs.forEach(i => totalCost += Number(i.value) || 0);
-    
-    // Update Tampilan Total Biaya
-    if(els.displayTotalCostInput) {
-        els.displayTotalCostInput.innerText = formatRp(totalCost);
-    }
+    // 1. VALIDATION
+    document.querySelectorAll('.cost-input, #inputHarvestResult, #inputTraderPrice').forEach(input => {
+        if (input.value && parseFloat(input.value) < 0) input.value = '0';
+    });
 
-    // 2. Harvest & Rice Conversion (PERBAIKAN LOGIKA BERAS)
+    // 2. AGGREGATE COSTS
+    let totalCost = 0;
+    els.inputs.forEach(i => totalCost += Number(i.value) || 0);
+
+    // 3. HARVEST & CONVERSION
     const harvest = Number(els.harvest.value) || 0;
     const riceResult = harvest > 0 ? (harvest / 1.57) : 0;
-    
-    // Update Tampilan Hasil Beras
-    if(els.displayRiceResult) {
-        els.displayRiceResult.innerText = formatNum(riceResult);
-    }
-
+    if (els.displayRiceResult) els.displayRiceResult.innerText = `${formatNum(riceResult)} Kg`;
     const hpp = harvest > 0 ? totalCost / harvest : 0;
 
-    // 3. Percentages & Constraints
+    // 4. POLICY & MARGINS (with Enforcement)
     let pFarmer = Number(els.sliderFarmer.value);
     let pGov = Number(els.sliderGov.value);
-
     if (pGov < pFarmer) {
-        els.govWarning.classList.remove('hidden');
-    } else {
-        els.govWarning.classList.add('hidden');
+        pGov = pFarmer;
+        els.sliderGov.value = pGov;
     }
     
-    // 4. Prices
-    const marginFarmer = hpp * (pFarmer/100);
-    const marginGov = hpp * (pGov/100);
-    
+    // 5. PRICE CALCULATIONS
+    const marginFarmer = hpp * (pFarmer / 100);
+    const marginGov = hpp * (pGov / 100);
     const priceFarmer = hpp + marginFarmer;
     const priceGov = hpp + marginGov;
     
-    // 5. Trader Input Logic
+    // 6. TRADER PRICE
     const priceTrader = Number(els.inputTrader.value) || 0;
 
-                const marginFarmerPerBeras = marginFarmer * 1.57;
-                const marginGovPerBeras = marginGov * 1.57;
-    
-                // 6. Update UI Labels
-                els.labelFarmer.innerText = pFarmer + '%';
-                els.valFarmerRp.innerText = `(+${formatRp(marginFarmerPerBeras)})`;
-    
-                els.labelGov.innerText = pGov + '%';
-                els.valGovRp.innerText = `(+${formatRp(marginGovPerBeras)})`;
-    // 7. Update Result Cards
-                if (!isPuso) {
-                    els.dHPP.innerText = formatRp(hpp * 1.57);
-                    els.dFarmer.innerText = formatRp(priceFarmer * 1.57);
-                    els.dGov.innerText = formatRp(priceGov * 1.57);
-                    els.lossPanel.classList.add('hidden');
-                } else {
-                    els.dHPP.innerText = "-";
-                    els.dFarmer.innerText = "-";
-                    els.dGov.innerText = "-";
-                    els.lossPanel.classList.remove('hidden');
-                    els.displayTotalLoss.innerText = formatRp(totalCost);
-                }
-    // 8. Update Status Logic
+    // 7. UPDATE UI LABELS
+    els.labelFarmer.innerText = pFarmer + '%';
+    if (els.valFarmerRp) els.valFarmerRp.innerText = `+${formatRp(marginFarmer * 1.57)}`;
+    els.labelGov.innerText = pGov + '%';
+    if (els.valGovRp) els.valGovRp.innerText = `+${formatRp(marginGov * 1.57)}`;
+
+    // 8. UPDATE RESULT CARDS
+    if (!isPuso) {
+        els.dHPP.innerText = formatRp(hpp * 1.57);
+        els.dFarmer.innerText = formatRp(priceFarmer * 1.57);
+        els.dGov.innerText = formatRp(priceGov * 1.57);
+        els.lossPanel.classList.add('hidden');
+        els.resultGrid.classList.remove('hidden');
+    } else {
+        els.dHPP.innerText = "N/A";
+        els.dFarmer.innerText = "N/A";
+        els.dGov.innerText = "N/A";
+        els.lossPanel.classList.remove('hidden');
+        els.resultGrid.classList.add('hidden');
+        els.displayTotalLoss.innerText = formatRp(totalCost);
+    }
+
+    // 9. UPDATE GLOBAL STATUS
     updateStatus(isPuso, priceTrader, priceGov, priceFarmer, hpp);
     updateChart(isPuso, hpp, priceFarmer, priceGov, priceTrader);
 }
 
+// --- UI UPDATES ---
 function updateStatus(puso, traderPrice, govPrice, farmerPrice, hpp) {
-    // --- Price Conversions & Limits ---
     const govPricePerBeras = govPrice * 1.57;
     const farmerPricePerBeras = farmerPrice * 1.57;
-    const highLimit = govPricePerBeras * 1.5; // 50% emergency markup
+    const highLimit = govPricePerBeras * 1.5;
 
-    // --- Variables for new status ---
-    let iconName, bannerClass, title, description;
-    let showActionButton = false;
+    let iconName, statusClass, title, description, showActionButton = false;
 
-    // --- State Evaluation (ordered by priority) ---
     if (puso) {
-        bannerClass = 'bg-red-700 animate-status-danger';
-        title = "DARURAT: GAGAL PANEN";
-        description = "Produksi nol. Kerugian masif terdeteksi.";
-        iconName = 'alert-octagon';
+        statusClass = 'status-puso';
+        title = "SISTEM OFFLINE: GAGAL PANEN";
+        description = "Kerugian masif terdeteksi. Produksi nol.";
+        iconName = 'cloud-off';
         showActionButton = true;
-    } 
-    else if (hpp <= 0) {
-        bannerClass = 'bg-gray-500';
-        title = "DATA BELUM LENGKAP";
-        description = "Mohon lengkapi data biaya dan hasil panen.";
-        iconName = 'help-circle';
-    }
-    else if (traderPrice <= 0) {
-        bannerClass = 'bg-sky-600';
+    } else if (hpp <= 0) {
+        statusClass = 'status-lengkap';
+        title = "DATA TIDAK LENGKAP";
+        description = "Lengkapi data biaya dan hasil panen untuk memulai analisis.";
+        iconName = 'file-warning';
+    } else if (traderPrice <= 0) {
+        statusClass = 'status-menunggu';
         title = "MENUNGGU PENAWARAN";
-        description = "Masukkan harga tawaran dari pedagang untuk memulai analisis.";
+        description = "Masukkan harga tawaran dari pedagang untuk analisis spektrum.";
         iconName = 'mouse-pointer-click';
-    }
-    else if (traderPrice > highLimit) {
-        bannerClass = 'bg-red-600 animate-status-danger';
-        title = "HARGA PASAR MELONJAK";
-        description = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi batas kritis pemerintah (${formatRp(highLimit)}).`;
+    } else if (traderPrice > highLimit) {
+        statusClass = 'status-melonjak';
+        title = "HARGA MELONJAK DRASTIS";
+        description = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi batas kritis (${formatRp(highLimit)}).`;
         iconName = 'trending-up';
         showActionButton = true;
-    }
-    else if (traderPrice > govPricePerBeras) {
-        bannerClass = 'bg-orange-500';
+    } else if (traderPrice > govPricePerBeras) {
+        statusClass = 'status-di-atas-standar';
         title = "HARGA DI ATAS STANDAR";
         description = `Tawaran pedagang (${formatRp(traderPrice)}) di atas standar pemerintah (${formatRp(govPricePerBeras)}).`;
         iconName = 'alert-circle';
-    }
-    else if (traderPrice < farmerPricePerBeras) {
-        bannerClass = 'bg-yellow-500 animate-status-warning';
-        title = "PETANI TIDAK UNTUNG";
+    } else if (traderPrice < farmerPricePerBeras) {
+        statusClass = 'status-tidak-untung';
+        title = "PETANI MERUGI";
         description = `Tawaran pedagang (${formatRp(traderPrice)}) di bawah target jual petani (${formatRp(farmerPricePerBeras)}).`;
         iconName = 'thumbs-down';
-    }
-    else { // The ideal state: farmerPrice <= traderPrice <= govPrice
-        bannerClass = 'bg-emerald-600';
+    } else {
+        statusClass = 'status-kondusif';
         title = "PASAR KONDUSIF";
-        description = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
+        description = "Harga tawaran pedagang berada dalam rentang yang ideal.";
         iconName = 'thumbs-up';
     }
 
-    // --- Apply UI Changes ---
-    els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500 " + bannerClass;
+    els.banner.className = 'status-hub active ' + statusClass;
     els.statusTitle.innerText = title;
     els.statusDesc.innerText = description;
-    els.statusIcon.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8 text-white"></i>`;
-    
-    if (showActionButton) {
-        els.actionBtn.classList.remove('hidden');
-        els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
-    } else {
-        els.actionBtn.classList.add('hidden');
-    }
+    els.statusIcon.innerHTML = `<i data-lucide="${iconName}" style="width: 3rem; height: 3rem;"></i>`;
+    els.actionBtn.classList.toggle('hidden', !showActionButton);
+    if(showActionButton) els.actionBtn.innerText = "Lakukan Operasi Pasar";
 
     lucide.createIcons();
 }
 
 function togglePuso(state) {
     isPuso = state;
-    if(isPuso) {
-        els.inputSection.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
-        els.resultGrid.classList.add('opacity-50');
-    } else {
-        els.inputSection.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
-        els.resultGrid.classList.remove('opacity-50');
-    }
+    // Only disable the cards for cost and policy inputs
+    [els.costInputsCard, els.policyInputsCard].forEach(card => {
+        card.style.opacity = state ? '0.5' : '1';
+        card.style.pointerEvents = state ? 'none' : 'auto';
+    });
     calculate();
 }
 
+// --- CHARTING ---
 function updateChart(puso, hpp, farmer, gov, trader) {
     const ctx = document.getElementById('mainChart').getContext('2d');
-    
-    // Convert gabah prices to beras prices
-    const hppPerBeras = hpp * 1.57;
-    const farmerPerBeras = farmer * 1.57;
-    const govPerBeras = gov * 1.57;
+    const data = puso ? [0, 0, 0, 0] : [hpp * 1.57, farmer * 1.57, gov * 1.57, trader];
 
-    const data = puso ? [0, 0, 0, 0] : [hppPerBeras, farmerPerBeras, govPerBeras, trader];
+    const chartColors = {
+        grid: 'rgba(129, 217, 133, 0.1)',
+        text: 'rgb(139, 154, 201)'
+    };
     
     if (chart) {
         chart.data.datasets[0].data = data;
@@ -218,9 +186,21 @@ function updateChart(puso, hpp, farmer, gov, trader) {
                 datasets: [{
                     label: 'Harga (Rp/Kg)',
                     data: data,
-                    backgroundColor: ['#9ca3af', '#22c55e', '#3b82f6', '#f97316'],
-                    borderRadius: 6,
-                    barThickness: 40
+                    backgroundColor: [
+                        'rgba(139, 154, 201, 0.5)', 
+                        'rgba(129, 217, 133, 0.5)',
+                        'rgba(110, 165, 255, 0.5)',
+                        'rgba(255, 201, 113, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgb(139, 154, 201)',
+                        'rgb(129, 217, 133)',
+                        'rgb(110, 165, 255)',
+                        'rgb(255, 201, 113)'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barThickness: 30
                 }]
             },
             options: {
@@ -228,22 +208,29 @@ function updateChart(puso, hpp, farmer, gov, trader) {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-                    x: { grid: { display: false } }
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: chartColors.grid },
+                        ticks: { color: chartColors.text, font: { weight: '600' } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: chartColors.text, font: { weight: '600' } }
+                    }
                 }
             }
         });
     }
 }
 
-// Listeners - Note: Since HTML inputs might be re-rendered or added, we should bind dynamically or ensure all cost-inputs are bound
-// For simplicity in this structure, we just bind all existing ones.
-document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+// --- EVENT LISTENERS ---
+document.querySelectorAll('.cost-input, #inputHarvestResult, #inputTraderPrice, #sliderFarmer, #sliderGov').forEach(el => {
+    el.addEventListener('input', calculate);
+});
 
-els.harvest.addEventListener('input', calculate);
-els.sliderFarmer.addEventListener('input', calculate);
-els.sliderGov.addEventListener('input', calculate);
-els.inputTrader.addEventListener('input', calculate);
+document.querySelectorAll('input[name="statusPanen"]').forEach(el => {
+    el.addEventListener('change', () => togglePuso(el.value === 'puso'));
+});
 
-// Init
+// Initial Calculation
 calculate();
