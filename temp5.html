@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem HPP & Operasi Pasar (Final Fix)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Icons (Lucide via CDN for simple integration) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+        
+        /* Custom Range Slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #4f46e5; cursor: pointer; margin-top: -6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
+        
+        .hover-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .animate-status-danger { animation: pulse-red 2s infinite; }
+        .animate-status-warning { animation: pulse-yellow 2s infinite; }
+
+        @keyframes pulse-yellow {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 pb-20">
+
+    <!-- TOP NAVBAR -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                        <i data-lucide="wheat" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900 leading-tight">Smart Tani Monitor V4</h1>
+                        <p class="text-xs text-gray-500">Sistem Penentuan HPP & Operasi Pasar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- === KOLOM KIRI: INPUT & KONTROL === -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- 1. STATUS PANEN -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Status Pertanian</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="statusPanen" value="berhasil" class="peer sr-only" checked onchange="togglePuso(false)">
+                        <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all text-center h-full flex flex-col items-center justify-center gap-2 hover:bg-gray-50">
+                            <i data-lucide="sprout" class="w-8 h-8 text-green-600"></i>
+                            <span class="font-bold text-gray-700 peer-checked:text-green-700">Panen Berhasil</span>
+                        </div>
+                        <div class="absolute top-2 right-2 hidden peer-checked:block">
+                            <i data-lucide="check-circle-2" class="w-5 h-5 text-green-500 fill-green-100"></i>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="statusPanen" value="puso" class="peer sr-only" onchange="togglePuso(true)">
+                        <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-red-500 peer-checked:bg-red-50 transition-all text-center h-full flex flex-col items-center justify-center gap-2 hover:bg-gray-50">
+                            <i data-lucide="alert-triangle" class="w-8 h-8 text-red-600"></i>
+                            <span class="font-bold text-gray-700 peer-checked:text-red-700">Puso (Gagal)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 2. INPUT BIAYA -->
+            <div id="inputSection" class="transition-all duration-300">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+                            <i data-lucide="calculator" class="w-4 h-4"></i> Kalkulator Biaya
+                        </h2>
+                        <span class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">Input Rupiah</span>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        
+                        <!-- Total Biaya Display -->
+                        <div class="bg-gray-800 text-white p-4 rounded-lg flex justify-between items-center shadow-inner mb-4">
+                            <span class="text-sm font-medium text-gray-300">Total Modal Keluar</span>
+                            <span id="displayTotalCostInput" class="text-xl font-bold text-white">Rp 0</span>
+                        </div>
+
+                        <!-- Grid Input (Restored Fields) -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Benih</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="500000">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Pupuk</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="1200000">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Pestisida</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="400000">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Tenaga Kerja</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="2500000">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Sewa Lahan</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="1500000">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Bahan Bakar</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="300000">
+                            </div>
+                            <!-- Operasional Full Width for Balance -->
+                            <div class="col-span-2">
+                                <label class="text-xs font-semibold text-gray-500 mb-1 block">Biaya Operasional Lainnya</label>
+                                <input type="number" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cost-input transition-all" value="500000">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                            <label class="block text-sm font-bold text-indigo-900 mb-2">Total Hasil Panen (Gabah/Kg)</label>
+                            <div class="relative">
+                                <input type="number" id="inputHarvestResult" class="w-full p-3 pl-10 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="1500">
+                                <i data-lucide="weight" class="absolute left-3 top-3.5 w-5 h-5 text-indigo-400"></i>
+                            </div>
+                            <!-- Konversi Beras -->
+                            <div class="mt-2 pt-2 border-t border-indigo-200 flex justify-between items-center text-indigo-800">
+                                <span class="text-sm">Setara Beras (Estimasi):</span>
+                                <div class="text-right">
+                                    <span id="displayRiceResult" class="font-bold text-lg">0</span> <span class="text-sm font-semibold">Kg</span>
+                                    <span class="text-[10px] block opacity-70">(1 Kg Beras = 1.57 Kg Gabah)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. KEBIJAKAN HARGA -->
+                <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">Kebijakan Harga</h2>
+                    
+                    <!-- Slider Petani -->
+                    <div class="mb-6">
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-bold text-green-700 flex items-center gap-2">
+                                <i data-lucide="user" class="w-4 h-4"></i> Margin Petani
+                            </label>
+                            <div class="text-right">
+                                <span class="text-sm font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded" id="labelFarmerPct">20%</span>
+                                <span class="text-xs font-bold text-green-700 ml-1 block" id="valFarmerRp">(+Rp 0)</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderFarmer" min="0" max="100" value="20" class="w-full accent-green-600">
+                    </div>
+
+                    <!-- Slider Pemerintah -->
+                    <div class="mb-6 relative">
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-bold text-blue-700 flex items-center gap-2">
+                                <i data-lucide="landmark" class="w-4 h-4"></i> Margin Pemerintah
+                            </label>
+                            <div class="text-right">
+                                <span class="text-sm font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded" id="labelGovPct">25%</span>
+                                <span class="text-xs font-bold text-blue-700 ml-1 block" id="valGovRp">(+Rp 0)</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderGov" min="0" max="100" value="25" class="w-full accent-blue-600">
+                        <p id="govWarning" class="text-xs text-red-500 mt-1 hidden absolute -bottom-5 left-0 font-semibold">⚠️ Tidak boleh di bawah petani</p>
+                    </div>
+
+                    <!-- INPUT HARGA PEDAGANG -->
+                    <div class="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <label class="block text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                            <i data-lucide="store" class="w-4 h-4"></i> Harga Tawaran Pedagang
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-3 text-indigo-800 font-bold">Rp</span>
+                            <input type="number" id="inputTraderPrice" class="w-full p-3 pl-12 border-2 border-indigo-200 rounded-lg text-lg font-bold text-indigo-700 focus:outline-none focus:border-indigo-500" value="4000">
+                        </div>
+                        <p class="text-xs text-indigo-600 mt-2">Masukkan harga per Kg beras.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === KOLOM KANAN: HASIL / DASHBOARD === -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- STATUS INDICATOR BANNER -->
+            <div id="statusBanner" class="rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500 transform scale-100">
+                <div class="flex items-center gap-4">
+                    <div id="statusIconBg" class="bg-white/20 p-3 rounded-full backdrop-blur-sm">
+                        <i id="statusIcon" data-lucide="check-circle" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 id="statusTitle" class="text-2xl font-bold">PASAR STABIL</h2>
+                        <p id="statusDesc" class="text-white/90 text-sm">Harga pedagang masih dalam batas wajar.</p>
+                    </div>
+                </div>
+                <!-- Action Button -->
+                <button id="actionBtn" class="hidden bg-white text-red-600 px-6 py-3 rounded-full font-bold shadow-lg hover:bg-gray-100 transition animate-bounce text-sm md:text-base border-b-4 border-gray-200 active:border-b-0 active:translate-y-1">
+                    📢 LAKUKAN OPERASI PASAR
+                </button>
+            </div>
+            
+            <!-- PANEL KERUGIAN KHUSUS PUSO (Hidden by default) -->
+            <div id="lossPanel" class="hidden bg-red-100 border-l-8 border-red-600 p-6 rounded-r-xl shadow-md animate-fade-in">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-red-900 font-bold text-lg">⚠️ TOTAL KERUGIAN PETANI</h3>
+                        <p class="text-red-700 text-sm">Akibat Gagal Panen (Puso)</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="displayTotalLoss" class="text-3xl font-black text-red-600">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULT CARDS GRID -->
+            <div id="resultGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- HPP Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-gray-400 hover-card">
+                    <p class="text-xs text-gray-500 font-bold uppercase">HPP (Modal)</p>
+                    <h3 id="displayHPP" class="text-2xl font-bold text-gray-700 mt-1">Rp 0</h3>
+                    <p class="text-xs text-gray-400 mt-2">Biaya per Kg Gabah</p>
+                </div>
+                
+                <!-- Petani Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-green-500 hover-card">
+                    <p class="text-xs text-green-600 font-bold uppercase">Target Jual Petani</p>
+                    <h3 id="displayFarmerPrice" class="text-2xl font-bold text-green-700 mt-1">Rp 0</h3>
+                    <p class="text-xs text-gray-400 mt-2">Gabah (GKG)</p>
+                </div>
+
+                <!-- Pemerintah Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500 hover-card">
+                    <p class="text-xs text-blue-600 font-bold uppercase">Standar Pemerintah</p>
+                    <h3 id="displayGovPrice" class="text-2xl font-bold text-blue-700 mt-1">Rp 0</h3>
+                    <p class="text-xs text-gray-400 mt-2">Batas Atas Gabah</p>
+                </div>
+            </div>
+
+            <!-- COMPARISON SECTION -->
+            <div id="comparisonSection" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i> Analisis Harga (Per KG Beras)
+                </h3>
+                
+                <div class="h-64 w-full">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // --- Selectors ---
+        const els = {
+            inputs: document.querySelectorAll('.cost-input'),
+            harvest: document.getElementById('inputHarvestResult'),
+            sliderFarmer: document.getElementById('sliderFarmer'),
+            sliderGov: document.getElementById('sliderGov'),
+            inputTrader: document.getElementById('inputTraderPrice'),
+            
+            // Labels
+            labelFarmer: document.getElementById('labelFarmerPct'),
+            labelGov: document.getElementById('labelGovPct'),
+            valFarmerRp: document.getElementById('valFarmerRp'),
+            valGovRp: document.getElementById('valGovRp'),
+            govWarning: document.getElementById('govWarning'),
+            
+            // Displays - PERBAIKAN: Selector ini ditambahkan agar JS bisa mengubah teksnya
+            displayTotalCostInput: document.getElementById('displayTotalCostInput'),
+            displayRiceResult: document.getElementById('displayRiceResult'),
+            
+            // Display Results
+            dHPP: document.getElementById('displayHPP'),
+            dFarmer: document.getElementById('displayFarmerPrice'),
+            dGov: document.getElementById('displayGovPrice'),
+            lossPanel: document.getElementById('lossPanel'),
+            displayTotalLoss: document.getElementById('displayTotalLoss'),
+            
+            // Status Banner
+            banner: document.getElementById('statusBanner'),
+            statusTitle: document.getElementById('statusTitle'),
+            statusDesc: document.getElementById('statusDesc'),
+            statusIcon: document.getElementById('statusIcon'),
+            actionBtn: document.getElementById('actionBtn'),
+            
+            inputSection: document.getElementById('inputSection'),
+            resultGrid: document.getElementById('resultGrid')
+        };
+
+        const formatRp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+        const formatNum = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
+
+        let isPuso = false;
+        let chart = null;
+
+        function calculate() {
+            // 1. Costs & Total Cost Display (PERBAIKAN LOGIKA TOTAL BIAYA)
+            let totalCost = 0;
+            // Re-query inputs every calculation to ensure all fields are captured correctly
+            const currentInputs = document.querySelectorAll('.cost-input');
+            currentInputs.forEach(i => totalCost += Number(i.value) || 0);
+            
+            // Update Tampilan Total Biaya
+            if(els.displayTotalCostInput) {
+                els.displayTotalCostInput.innerText = formatRp(totalCost);
+            }
+
+            // 2. Harvest & Rice Conversion (PERBAIKAN LOGIKA BERAS)
+            const harvest = Number(els.harvest.value) || 0;
+            const riceResult = harvest > 0 ? (harvest / 1.57) : 0;
+            
+            // Update Tampilan Hasil Beras
+            if(els.displayRiceResult) {
+                els.displayRiceResult.innerText = formatNum(riceResult);
+            }
+
+            const hpp = harvest > 0 ? totalCost / harvest : 0;
+
+            // 3. Percentages & Constraints
+            let pFarmer = Number(els.sliderFarmer.value);
+            let pGov = Number(els.sliderGov.value);
+
+            if (pGov < pFarmer) {
+                els.govWarning.classList.remove('hidden');
+            } else {
+                els.govWarning.classList.add('hidden');
+            }
+            
+            // 4. Prices
+            const marginFarmer = hpp * (pFarmer/100);
+            const marginGov = hpp * (pGov/100);
+            
+            const priceFarmer = hpp + marginFarmer;
+            const priceGov = hpp + marginGov;
+            
+            // 5. Trader Input Logic
+            const priceTrader = Number(els.inputTrader.value) || 0;
+
+            // 6. Update UI Labels
+            els.labelFarmer.innerText = pFarmer + '%';
+            els.valFarmerRp.innerText = `(+${formatRp(marginFarmer)})`;
+
+            els.labelGov.innerText = pGov + '%';
+            els.valGovRp.innerText = `(+${formatRp(marginGov)})`;
+
+            // 7. Update Result Cards
+            if (!isPuso) {
+                els.dHPP.innerText = formatRp(hpp);
+                els.dFarmer.innerText = formatRp(priceFarmer);
+                els.dGov.innerText = formatRp(priceGov);
+                els.lossPanel.classList.add('hidden');
+            } else {
+                els.dHPP.innerText = "-";
+                els.dFarmer.innerText = "-";
+                els.dGov.innerText = "-";
+                els.lossPanel.classList.remove('hidden');
+                els.displayTotalLoss.innerText = formatRp(totalCost);
+            }
+
+            // 8. Update Status Logic
+            updateStatus(isPuso, priceTrader, priceGov, priceFarmer, hpp);
+            updateChart(isPuso, hpp, priceFarmer, priceGov, priceTrader);
+        }
+
+        function updateStatus(puso, traderPrice, govPrice, farmerPrice, hpp) {
+            // Reset Banner Style
+            els.banner.className = "rounded-xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500";
+            els.actionBtn.classList.add('hidden');
+            
+            const highLimit = govPrice + (govPrice * 0.50); // 50% limit trigger
+
+            if (puso) {
+                els.banner.classList.add('bg-red-700', 'animate-status-danger');
+                els.statusTitle.innerText = "DARURAT: GAGAL PANEN";
+                els.statusDesc.innerText = "Produksi nol. Kerugian masif terdeteksi.";
+                els.statusIcon.setAttribute('data-lucide', 'alert-octagon');
+                els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
+                els.actionBtn.classList.remove('hidden');
+            } 
+            else if (hpp <= 0) {
+                els.banner.classList.add('bg-gray-500');
+                els.statusTitle.innerText = "DATA BELUM LENGKAP";
+                els.statusDesc.innerText = "Mohon lengkapi data biaya dan hasil panen.";
+                els.statusIcon.setAttribute('data-lucide', 'help-circle');
+            }
+            else if (traderPrice > highLimit) {
+                els.banner.classList.add('bg-red-600', 'animate-status-danger');
+                els.statusTitle.innerText = "HARGA PASAR MELONJAK";
+                els.statusDesc.innerText = `Tawaran pedagang (${formatRp(traderPrice)}) melebihi 50% batas pemerintah (${formatRp(highLimit)}).`;
+                els.statusIcon.setAttribute('data-lucide', 'trending-up');
+                els.actionBtn.innerText = "LAKUKAN OPERASI PASAR";
+                els.actionBtn.classList.remove('hidden');
+            }
+            else if (traderPrice < farmerPrice && traderPrice > 0) { // Using Farmer Target as baseline for warning
+                els.banner.classList.add('bg-yellow-500', 'animate-status-warning');
+                els.statusTitle.innerText = "PETANI TIDAK UNTUNG";
+                els.statusDesc.innerText = `Tawaran Harga Beras di bawah target jual petani (${formatRp(farmerPrice)}).`;
+                els.statusIcon.setAttribute('data-lucide', 'thumbs-down');
+            }
+            else {
+                els.banner.classList.add('bg-emerald-600');
+                els.statusTitle.innerText = "PASAR KONDUSIF";
+                els.statusDesc.innerText = "Harga tawaran pedagang dalam rentang wajar dan menguntungkan.";
+                els.statusIcon.setAttribute('data-lucide', 'check-circle-2');
+            }
+            
+            lucide.createIcons();
+        }
+
+        function togglePuso(state) {
+            isPuso = state;
+            if(isPuso) {
+                els.inputSection.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+                els.resultGrid.classList.add('opacity-50');
+            } else {
+                els.inputSection.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+                els.resultGrid.classList.remove('opacity-50');
+            }
+            calculate();
+        }
+
+        function updateChart(puso, hpp, farmer, gov, trader) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const data = puso ? [0, 0, 0, 0] : [hpp, farmer, gov, trader];
+            
+            if (chart) {
+                chart.data.datasets[0].data = data;
+                chart.update();
+            } else {
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['HPP', 'Target Petani', 'Batas Pemerintah', 'Tawaran Pedagang'],
+                        datasets: [{
+                            label: 'Harga (Rp/Kg)',
+                            data: data,
+                            backgroundColor: ['#9ca3af', '#22c55e', '#3b82f6', '#f97316'],
+                            borderRadius: 6,
+                            barThickness: 40
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Listeners - Note: Since HTML inputs might be re-rendered or added, we should bind dynamically or ensure all cost-inputs are bound
+        // For simplicity in this structure, we just bind all existing ones.
+        document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+        
+        els.harvest.addEventListener('input', calculate);
+        els.sliderFarmer.addEventListener('input', calculate);
+        els.sliderGov.addEventListener('input', calculate);
+        els.inputTrader.addEventListener('input', calculate);
+
+        // Init
+        calculate();
+    </script>
+</body>
+</html>
